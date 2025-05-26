@@ -6,4 +6,3 @@ config/*
 !config/keep_this_folder
 plugins/*
 !plugins/keep_this_folder
-
