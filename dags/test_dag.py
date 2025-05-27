@@ -9,4 +9,3 @@ with DAG(
     catchup=False,
 ) as dag:
     start = EmptyOperator(task_id="start")
-
