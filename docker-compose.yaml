@@ -96,6 +96,8 @@ services:
       - "5432:5432"
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
+      - ./config/postgres/postgresql.conf:/etc/postgresql/postgresql.conf
+      - ./config/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "airflow"]
       interval: 10s
