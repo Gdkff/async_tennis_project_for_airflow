@@ -7,3 +7,4 @@ config/*
 plugins/*
 !plugins/keep_this_folder
 #dags/test_dag.py
+dags_test/
