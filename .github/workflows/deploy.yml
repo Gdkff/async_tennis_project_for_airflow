@@ -21,7 +21,7 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
             cd /opt/tennis_project
-            git pull origin main
-            docker compose down
-            docker compose up -d --build
+            git pull origin master
+#            docker compose down            # Comment it if needs to update only dags
+#            docker compose up -d --build   # Comment it if needs to update only dags
           EOF
