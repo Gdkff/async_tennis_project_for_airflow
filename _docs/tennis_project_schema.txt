@@ -1,0 +1,5 @@
+ATP:
+1. Calendar (by year) (API) -> mrr.atp_tournaments (year, atp_trn_id)
+2. Draw types (by year, atp_trn_id) (soup) -> mrr.atp_draws (trn_id, draw_type)
+3. Draws (by year, atp_trn_id, draw_type) -> mrr.atp_players (atp_pl_id)
+					  -> mrr.atp_matches (
