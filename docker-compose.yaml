@@ -349,20 +349,19 @@ services:
       - "--web.listen-address=:9102"
     restart: always
 
-  services:
-    node_exporter:
-      image: prom/node-exporter:latest
-      container_name: node_exporter
-      ports:
-        - "9100:9100"
-      restart: always
-      volumes:
-        - /proc:/host/proc:ro
-        - /sys:/host/sys:ro
-      command:
-        - '--path.procfs=/host/proc'
-        - '--path.sysfs=/host/sys'
-        - '--collector.filesystem.ignored-mount-points="^/(sys|proc|dev|host|etc)($|/)"'
+  node_exporter:
+    image: prom/node-exporter:latest
+    container_name: node_exporter
+    ports:
+      - "9100:9100"
+    restart: always
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points="^/(sys|proc|dev|host|etc)($|/)"'
 
 volumes:
   postgres-db-volume:
