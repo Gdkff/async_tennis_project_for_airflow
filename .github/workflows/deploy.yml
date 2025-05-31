@@ -22,7 +22,15 @@ jobs:
           ssh -t -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
             cd /opt/tennis_project
             git pull origin master
-            mv .env.server .env
+            FILE_PATH=".env.server"
+            NEW_FILE_PATH=".env"
+            if [ -f "$FILE_PATH" ]; then
+              echo "File found: $FILE_PATH"
+              mv "$FILE_PATH" "$NEW_FILE_PATH"
+              echo "File renamed to: $NEW_FILE_PATH"
+            else
+              echo "File not found: $FILE_PATH"
+            fi
             #docker compose down
             #docker stop $(docker ps -aq)
             #docker rm $(docker ps -aq)
