@@ -1,8 +1,11 @@
 .venv/
-others/
+.idea/
+_others/
 logs/*
 !logs/keep_this_folder
 plugins/*
 !plugins/keep_this_folder
 #dags/test_dag.py
-dags_test/
+_dags_test/
+_docs/
+.env.local

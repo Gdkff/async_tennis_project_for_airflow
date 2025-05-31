@@ -20,7 +20,7 @@
 #
 # WARNING: This configuration is for local development. Do not use it in a production deployment.
 #
-# This configuration supports basic configuration using environment variables or an .env file
+# This configuration supports basic configuration using environment variables or an .env.server file
 # The following variables are supported:
 #
 # AIRFLOW_IMAGE_NAME           - Docker image name used to run Airflow.
@@ -100,6 +100,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
+      - ./config/postgres/db_init.sql:/docker-entrypoint-initdb.d
       - ./config/postgres/postgresql.conf:/etc/postgresql/postgresql.conf
       - ./config/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf
     healthcheck:
@@ -125,7 +126,11 @@ services:
 
   airflow-apiserver:
     <<: *airflow-common
-    command: api-server
+    command: >
+      bash -c "
+      pip install --no-cache-dir -r /requirements.txt &&
+      api-server
+      "
     ports:
       - "8080:8080"
     healthcheck:
@@ -139,10 +144,16 @@ services:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
+    volumes:
+      - ./requirements.txt:/requirements.txt:ro
 
   airflow-scheduler:
     <<: *airflow-common
-    command: scheduler
+    command: >
+      bash -c "
+      pip install --no-cache-dir -r /requirements.txt &&
+      scheduler
+      "
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
       interval: 30s
@@ -154,10 +165,16 @@ services:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
+    volumes:
+      - ./requirements.txt:/requirements.txt:ro
 
   airflow-dag-processor:
     <<: *airflow-common
-    command: dag-processor
+    command: >
+      bash -c "
+      pip install --no-cache-dir -r /requirements.txt &&
+      dag-processor
+      "
     healthcheck:
       test: ["CMD-SHELL", 'airflow jobs check --job-type DagProcessorJob --hostname "$${HOSTNAME}"']
       interval: 30s
@@ -169,10 +186,16 @@ services:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
+    volumes:
+      - ./requirements.txt:/requirements.txt:ro
 
   airflow-worker:
     <<: *airflow-common
-    command: celery worker
+    command: >
+      bash -c "
+      pip install --no-cache-dir -r /requirements.txt &&
+      celery worker
+      "
     healthcheck:
       # yamllint disable rule:line-length
       test:
@@ -194,6 +217,8 @@ services:
         condition: service_healthy
       airflow-init:
         condition: service_completed_successfully
+    volumes:
+      - ./requirements.txt:/requirements.txt:ro
 
   airflow-triggerer:
     <<: *airflow-common

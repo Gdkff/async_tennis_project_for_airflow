@@ -22,6 +22,13 @@ jobs:
           ssh -t -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
             cd /opt/tennis_project
             git pull origin master
-            docker compose down
+            mv .env.server .env
+            docker stop $(docker ps -aq)
+            docker rm $(docker ps -aq)
+            docker rmi $(docker images -q)
+            docker volume rm $(docker volume ls -q)
+            docker network rm $(docker network ls -q | grep -v 'bridge\|host\|none')
+            docker system prune -a --volumes
+            #docker compose down
             docker compose up -d --build
           EOF
