@@ -16,7 +16,7 @@ default_args = {
 with DAG(
     dag_id='test_dag_airflow_3',
     default_args=default_args,
-    description='Тестовый даг',
+    description='Test DAG',
     schedule_interval="*/5 * * * *",
     start_date=datetime(2025, 1, 1),
     catchup=False,
