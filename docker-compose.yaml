@@ -100,7 +100,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
-      - ./config/postgres/db_init.sql:/docker-entrypoint-initdb.d
+      - ./config/postgres/init_db:/docker-entrypoint-initdb.d
       - ./config/postgres/postgresql.conf:/etc/postgresql/postgresql.conf
       - ./config/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf
     healthcheck:
