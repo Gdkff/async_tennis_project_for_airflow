@@ -29,5 +29,5 @@ jobs:
             #docker rmi $(docker images -q)
             #docker volume rm $(docker volume ls -q)
             #docker network rm $(docker network ls -q | grep -v 'bridge\|host\|none')
-            docker compose up -d --build
+            #docker compose up -d --build
           EOF
