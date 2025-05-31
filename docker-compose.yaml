@@ -129,7 +129,7 @@ services:
     command: >
       bash -c "
       pip install --no-cache-dir -r /requirements.txt &&
-      api-server
+      airflow api-server
       "
     ports:
       - "8080:8080"
@@ -152,7 +152,7 @@ services:
     command: >
       bash -c "
       pip install --no-cache-dir -r /requirements.txt &&
-      scheduler
+      airflow scheduler
       "
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
@@ -173,7 +173,7 @@ services:
     command: >
       bash -c "
       pip install --no-cache-dir -r /requirements.txt &&
-      dag-processor
+      airflow dag-processor
       "
     healthcheck:
       test: ["CMD-SHELL", 'airflow jobs check --job-type DagProcessorJob --hostname "$${HOSTNAME}"']
@@ -194,7 +194,7 @@ services:
     command: >
       bash -c "
       pip install --no-cache-dir -r /requirements.txt &&
-      celery worker
+      airflow celery worker
       "
     healthcheck:
       # yamllint disable rule:line-length
