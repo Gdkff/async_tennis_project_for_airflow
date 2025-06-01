@@ -20,6 +20,11 @@ if get_ip() == server_ip:
 else:
     env_path = BASE_DIR / ".env.local"
 
+if os.path.exists(env_path):
+    print("Файл есть")
+else:
+    print("Файл отсутствует")
+
 load_dotenv(dotenv_path=env_path)
 
 POSTGRES_HOST = os.getenv('POSTGRES_HOST')
