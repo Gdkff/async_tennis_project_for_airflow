@@ -77,10 +77,10 @@ x-airflow-common:
     AIRFLOW__METRICS__STATSD_PORT: '8125'
     AIRFLOW__METRICS__STATSD_PREFIX: 'airflow'
   volumes:
-    - ./dags:/opt/airflow/dags
-    - ./logs:/opt/airflow/logs
-    - ./config:/opt/airflow/config
-    - ./plugins:/opt/airflow/plugins
+    - /opt/tennis_project/dags:/opt/airflow/dags
+    - /opt/tennis_project/dags:/opt/airflow/dags/logs:/opt/airflow/logs
+    - /opt/tennis_project/dags:/opt/airflow/dags/config:/opt/airflow/config
+    - /opt/tennis_project/dags:/opt/airflow/dags/plugins:/opt/airflow/plugins
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     &airflow-common-depends-on
