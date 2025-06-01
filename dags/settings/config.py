@@ -13,7 +13,7 @@ if hostname.startswith(local_hostname):
 elif hostname.startswith(server_hostname):
     env_path = BASE_DIR / ".env.server"
 else:
-    exit(1)
+    exit(hostname)
 load_dotenv(dotenv_path=env_path)
 
 POSTGRES_HOST = os.getenv('POSTGRES_HOST')
