@@ -81,6 +81,7 @@ x-airflow-common:
     - ./logs:/opt/airflow/logs
     - ./config:/opt/airflow/config
     - ./plugins:/opt/airflow/plugins
+    - ./requirements.txt:/requirements.txt
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     &airflow-common-depends-on
@@ -145,8 +146,6 @@ services:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
-    volumes:
-      - ./requirements.txt:/requirements.txt:ro
 
   airflow-scheduler:
     <<: *airflow-common
@@ -166,8 +165,6 @@ services:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
-    volumes:
-      - ./requirements.txt:/requirements.txt:ro
 
   airflow-dag-processor:
     <<: *airflow-common
@@ -187,8 +184,6 @@ services:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
-    volumes:
-      - ./requirements.txt:/requirements.txt:ro
 
   airflow-worker:
     <<: *airflow-common
@@ -218,8 +213,6 @@ services:
         condition: service_healthy
       airflow-init:
         condition: service_completed_successfully
-    volumes:
-      - ./requirements.txt:/requirements.txt:ro
 
   airflow-triggerer:
     <<: *airflow-common
