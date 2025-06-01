@@ -1,5 +1,5 @@
 import os
-import socket
+import requests
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -8,14 +8,8 @@ server_ip = "85.190.243.218"
 
 
 def get_ip():
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
-    except Exception:
-        ip = "127.0.0.1"
-    finally:
-        s.close()
+    ip = requests.get("https://api.ipify.org").text
+    print(f"My public IP is: {ip}")
     return ip
 
 
