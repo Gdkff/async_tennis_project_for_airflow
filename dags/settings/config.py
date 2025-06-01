@@ -16,7 +16,7 @@ def get_ip():
 print(get_ip())
 BASE_DIR = Path(__file__).resolve().parents[2]
 if get_ip() == server_ip:
-    env_path = BASE_DIR / ".env"
+    env_path = BASE_DIR / "../env"
 else:
     env_path = BASE_DIR / ".env.local"
 
