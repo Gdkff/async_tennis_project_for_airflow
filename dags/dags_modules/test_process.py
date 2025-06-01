@@ -2,7 +2,7 @@ from settings.config import POSTGRES_HOST, POSTGRES_DB, POSTGRES_USER, POSTGRES_
 import psycopg2
 
 
-def insert_match(data):
+def insert_match():
     try:
         conn = psycopg2.connect(
             dbname=POSTGRES_DB,
