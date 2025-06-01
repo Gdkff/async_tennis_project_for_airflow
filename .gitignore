@@ -9,3 +9,4 @@ plugins/*
 _dags_test/
 _docs/
 .env.local
+dags/.idea/

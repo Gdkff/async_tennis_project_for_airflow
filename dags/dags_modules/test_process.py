@@ -14,10 +14,10 @@ def insert_match(data):
         cur = conn.cursor()
 
         insert_query = """
-            INSERT INTO atp_matches (id, tournament, "year", winner, loser, score, round, surface)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO atp_matches (tournament, "year", winner, loser, score, round, surface)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
-        cur.execute(insert_query, (1, 'test', 2025, 'test', 'test', 'test', 'test', 'test'))
+        cur.execute(insert_query, ('test', 2025, 'test', 'test', 'test', 'test', 'test'))
 
         conn.commit()
         cur.close()
