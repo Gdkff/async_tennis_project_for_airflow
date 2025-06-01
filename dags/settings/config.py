@@ -7,6 +7,7 @@ local_hostname = "inovis"
 server_hostname = "d3b011aec5af"
 
 hostname = socket.gethostname()
+print(hostname)
 BASE_DIR = Path(__file__).resolve().parents[2]
 if hostname.startswith(local_hostname):
     env_path = BASE_DIR / ".env.local"
