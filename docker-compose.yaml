@@ -103,6 +103,7 @@ services:
       - ./config/postgres/init_db:/docker-entrypoint-initdb.d
       - ./config/postgres/postgresql.conf:/etc/postgresql/postgresql.conf
       - ./config/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "airflow"]
       interval: 10s
