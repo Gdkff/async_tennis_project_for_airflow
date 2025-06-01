@@ -9,14 +9,13 @@ server_ip = "85.190.243.218"
 
 def get_ip():
     ip = requests.get("https://api.ipify.org").text
-    print(f"My public IP is: {ip}")
     return ip
 
 
 print(get_ip())
 BASE_DIR = Path(__file__).resolve().parents[2]
 if get_ip() == server_ip:
-    env_path = BASE_DIR / "../env"
+    env_path = BASE_DIR / "/opt/tennis_project/.env"
 else:
     env_path = BASE_DIR / ".env.local"
 
