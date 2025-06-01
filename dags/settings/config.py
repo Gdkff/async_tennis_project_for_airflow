@@ -4,7 +4,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 local_hostname = "inovis"
-server_hostname = "vmi2633586"
+server_hostname = "d3b011aec5af"
 
 hostname = socket.gethostname()
 BASE_DIR = Path(__file__).resolve().parents[2]
