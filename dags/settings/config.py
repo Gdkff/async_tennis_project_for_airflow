@@ -19,6 +19,7 @@ if get_ip() == server_ip:
 else:
     env_path = BASE_DIR / ".env.local"
 
+print(env_path)
 if os.path.exists(env_path):
     print("Файл есть")
 else:
