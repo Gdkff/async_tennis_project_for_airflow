@@ -148,7 +148,7 @@ class T24DailyMatchesLoading(Tennis24):
     async def load_daily_matches(self):
         await self._dbo.init_pool()
         matches = []
-        for day_number in range(-1, 7):
+        for day_number in range(-3, 7):
             print('####### Day number:', str(day_number) + ', Date:', date.today() + timedelta(days=day_number))
             url = f'https://global.flashscore.ninja/107/x/feed/f_2_{day_number}_4_en_1'
             match_page = await super()._get_html_async(url, need_soup=False)
@@ -167,9 +167,13 @@ class T24DailyMatchesLoading(Tennis24):
         await self._dbo.insert_or_update_many('public', 't24_matches', matches, ['t24_match_id'])
 
 
-if __name__ == '__main__':
-    start_time = datetime.now()
+def t24_load_daily_matches():
     t24 = T24DailyMatchesLoading()
     asyncio.run(t24.load_daily_matches())
+
+
+if __name__ == '__main__':
+    start_time = datetime.now()
+    t24_load_daily_matches()
 
     print('Time length:', datetime.now() - start_time)
