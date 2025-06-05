@@ -5,10 +5,10 @@ from settings.config import POSTGRES_HOST, POSTGRES_USER, POSTGRES_PASSWORD, POS
 
 class DBOperator:
     def __init__(self):
-        self.__pool = None
+        self._pool = None
 
     async def init_pool(self):
-        self.__pool = await asyncpg.create_pool(
+        self._pool = await asyncpg.create_pool(
             user=POSTGRES_USER,
             password=POSTGRES_PASSWORD,
             database=POSTGRES_DB,
@@ -27,7 +27,7 @@ class DBOperator:
             VALUES ({placeholders})
             RETURNING id
         """
-        async with self.__pool.acquire() as connection:
+        async with self._pool.acquire() as connection:
             result = await connection.fetchrow(insert_query, *values)
         return result['id']
 
@@ -39,7 +39,7 @@ class DBOperator:
             SET {set_string}, record_updated = ${len(values) - 1}
             WHERE id = ${len(values)};
         '''
-        async with self.__pool.acquire() as connection:
+        async with self._pool.acquire() as connection:
             await connection.execute(update_query, *values)
 
     async def insert_or_update_many(self, schema: str, table: str, records: [dict],
@@ -67,7 +67,7 @@ class DBOperator:
             values = [tuple([record[col] for col in record] + [datetime.datetime.now()]) for record in records]
         else:
             values = [tuple([record[col] for col in record]) for record in records]
-        async with self.__pool.acquire() as connection:
+        async with self._pool.acquire() as connection:
             async with connection.transaction():
                 try:
                     await connection.executemany(query, values)
@@ -88,6 +88,6 @@ class DBOperator:
             )
             condition_values = list(where_conditions.values())
         query += condition_clause
-        async with self.__pool.acquire() as connection:
+        async with self._pool.acquire() as connection:
             result = await connection.fetch(query, *condition_values)
         return [dict(record) for record in result]

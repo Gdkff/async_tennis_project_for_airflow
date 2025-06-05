@@ -139,7 +139,8 @@ class T24DailyMatchesLoading(Tennis24):
                 else:
                     match_data[split_dict[key]] = value
         match_data['match_status_short'] = match_statuses_short[match_data['match_status_short']]
-        match_data['match_status'] = match_statuses[match_data['match_status']]
+        match_data['match_status'] = match_statuses[match_data['match_status']] \
+            if match_statuses.get(match_data['match_status']) is not None else match_data['match_status']
         score_string = self.__generate_score_string_from_match_data(match_data)
         if score_string:
             match_data['match_score'] = score_string
@@ -168,6 +169,7 @@ class T24DailyMatchesLoading(Tennis24):
                                        'surface': current_tournament.get('surface')})
                     matches.append(match_data)
         await self._dbo.insert_or_update_many('public', 't24_matches', matches, ['t24_match_id'])
+        await self._dbo._pool.close()
 
 
 def t24_load_daily_matches():
