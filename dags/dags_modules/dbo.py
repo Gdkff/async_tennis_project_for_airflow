@@ -13,7 +13,9 @@ class DBOperator:
             password=POSTGRES_PASSWORD,
             database=POSTGRES_DB,
             host=POSTGRES_HOST,
-            port=5432
+            port=5432,
+            min_size=1,
+            max_size=5
         )
 
     async def insert(self, db_name: str, table_name: str, data: dict) -> int:

@@ -1,5 +1,6 @@
 from dags_modules.t24_init import Tennis24, asyncio
 from datetime import datetime, date, timedelta
+from settings.config import tz
 
 
 class T24DailyMatchesLoading(Tennis24):
@@ -134,9 +135,11 @@ class T24DailyMatchesLoading(Tennis24):
             key, value = line_part.split('÷')
             if key in split_dict:
                 if split_dict[key] in ('match_start', 'match_finish'):
-                    match_data[split_dict[key]] = datetime.fromtimestamp(int(value))
+                    match_data[split_dict[key]] = datetime.fromtimestamp(int(value), tz=tz)
                 else:
                     match_data[split_dict[key]] = value
+        match_data['match_status_short'] = match_statuses_short[match_data['match_status_short']]
+        match_data['match_status'] = match_statuses[match_data['match_status']]
         score_string = self.__generate_score_string_from_match_data(match_data)
         if score_string:
             match_data['match_score'] = score_string
