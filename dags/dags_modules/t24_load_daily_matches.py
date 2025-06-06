@@ -93,7 +93,12 @@ class T24DailyMatchesLoading(Tennis24):
                           '19': 'Live Set 3',
                           '20': 'Live Set 4',
                           '21': 'Live Set 5',
-                          '36': 'Interrupted'}
+                          '46': 'Interrupted',
+                          '47': 'Live Set 1 Tiebreak',
+                          '48': 'Live Set 2 Tiebreak',
+                          '49': 'Live Set 3 Tiebreak',
+                          '50': 'Live Set 4 Tiebreak',
+                          '51': 'Live Set 5 Tiebreak'}
         match_statuses_short = {'1': 'Not started',
                                 '2': 'Playing',
                                 '3': 'Ended'}
@@ -146,9 +151,10 @@ class T24DailyMatchesLoading(Tennis24):
                     match_data[split_dict[key]] = datetime.fromtimestamp(int(value), tz=tz)
                 else:
                     match_data[split_dict[key]] = value
+        match_data['match_status_short_code'] = int(match_data['match_status_short'])
         match_data['match_status_short'] = match_statuses_short[match_data['match_status_short']]
-        match_data['match_status'] = match_statuses[match_data['match_status']] \
-            if match_statuses.get(match_data['match_status']) is not None else match_data['match_status']
+        match_data['match_status_code'] = int(match_data['match_status'])
+        match_data['match_status'] = match_statuses.get(match_data['match_status'])
         score_string = self.__generate_score_string_from_match_data(match_data)
         if score_string:
             match_data['match_score'] = score_string
@@ -160,7 +166,7 @@ class T24DailyMatchesLoading(Tennis24):
     async def load_daily_matches(self):
         await self._dbo.init_pool()
         matches = []
-        for day_number in range(-7, 7):
+        for day_number in range(-1, 7):
             print('####### Day number:', str(day_number) + ', Date:', date.today() + timedelta(days=day_number))
             url = f'https://global.flashscore.ninja/107/x/feed/f_2_{day_number}_4_en_1'
             match_page = await super()._get_html_async(url, need_soup=False)
