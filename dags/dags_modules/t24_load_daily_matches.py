@@ -10,14 +10,22 @@ class T24DailyMatchesLoading(Tennis24):
                       ': ': 'trn_type',
                       ' (': 'trn_name',
                       '), ': 'trn_country'}
-        trn_data = {}
+        if 'MIXED DOUBLES' in tournament_line:
+            split_dict = {' ': 'trn_category',
+                          ': ': 'trn_type',
+                          ' (': 'trn_name',
+                          '), ': 'trn_country'}
+        trn_data = {'qualification': False}
+        if ' - Qualification' in tournament_line:
+            trn_data['trn_qualification'] = True
+            tournament_line = tournament_line.replace(' - Qualification', '')
         for line_part in tournament_line.split('¬'):
             if line_part[:3] == 'ZA÷':
                 line = line_part.split('÷')[-1]
                 for splitter, key in split_dict.items():
-                    split_line = line.split(splitter)
-                    trn_data[key] = split_line[0]
-                    line = split_line[-1]
+                    splitter_place = line.find(splitter)
+                    trn_data[key] = line[:splitter_place]
+                    line = line[splitter_place + len(splitter):]
                 trn_data['surface'] = line
             elif line_part[:3] == 'ZE÷':
                 trn_data['t24_first_draw_id'] = line_part.split('÷')[-1]
@@ -152,7 +160,7 @@ class T24DailyMatchesLoading(Tennis24):
     async def load_daily_matches(self):
         await self._dbo.init_pool()
         matches = []
-        for day_number in range(-3, 7):
+        for day_number in range(-7, 7):
             print('####### Day number:', str(day_number) + ', Date:', date.today() + timedelta(days=day_number))
             url = f'https://global.flashscore.ninja/107/x/feed/f_2_{day_number}_4_en_1'
             match_page = await super()._get_html_async(url, need_soup=False)
@@ -166,10 +174,11 @@ class T24DailyMatchesLoading(Tennis24):
                                        'trn_type': current_tournament.get('trn_type'),
                                        'trn_name': current_tournament.get('trn_name'),
                                        'trn_country': current_tournament.get('trn_country'),
-                                       'surface': current_tournament.get('surface')})
+                                       'surface': current_tournament.get('surface'),
+                                       'trn_qualification': current_tournament.get('trn_qualification')})
                     matches.append(match_data)
         await self._dbo.insert_or_update_many('public', 't24_matches', matches, ['t24_match_id'])
-        await self._dbo._pool.close()
+        await self._dbo.close_pool()
 
 
 def t24_load_daily_matches():

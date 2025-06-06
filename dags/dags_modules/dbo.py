@@ -18,6 +18,9 @@ class DBOperator:
             max_size=5
         )
 
+    async def close_pool(self):
+        await self._pool.close()
+
     async def insert(self, db_name: str, table_name: str, data: dict) -> int:
         columns = ', '.join(data.keys())
         placeholders = ', '.join(f'${i + 1}' for i in range(len(data)))
