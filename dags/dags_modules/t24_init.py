@@ -10,9 +10,8 @@ class Tennis24:
         self.__concurrency = 100
         self.__semaphore = asyncio.Semaphore(self.__concurrency)
         self._dbo = dbo()
-        self.__players = {}
-        self.__current_max_pl_db_id = 0
-        self.__new_players = []
+        self._players = []
+        self._new_players = []
 
     async def _get_html_async(self, page_url: str, need_soup: bool = True) -> BeautifulSoup | str | None:
         def fetch_html(url: str):
@@ -23,7 +22,7 @@ class Tennis24:
         async with self.__semaphore:
             while True:
                 try:
-                    # print('Getting soup from:', page_url)
+                    # print('Getting from:', page_url)
                     html = await asyncio.to_thread(fetch_html, page_url.replace('-/-', '--'))
                     break
                 except urllib.error.HTTPError as http_er:

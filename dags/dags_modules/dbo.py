@@ -91,6 +91,26 @@ class DBOperator:
             )
             condition_values = list(where_conditions.values())
         query += condition_clause
+        print(query)
         async with self._pool.acquire() as connection:
             result = await connection.fetch(query, *condition_values)
         return [dict(record) for record in result]
+
+    async def t24_get_matches_without_initial_load(self):
+        select_query = f"""SELECT t24_match_id, match_url, t1_pl1_name, t1_pl2_name, t2_pl1_name, t2_pl2_name
+                           FROM public.t24_matches
+                           WHERE initial_match_data_loaded is null
+                        """
+        async with self._pool.acquire() as connection:
+            result = await connection.fetch(select_query)
+        return [dict(record) for record in result]
+
+    async def close_pg_connections(self):
+        query = """ SELECT pg_terminate_backend(pid)
+                    FROM pg_stat_activity
+                    WHERE datname = 'tennis'
+                      AND state = 'idle'
+                      AND pid <> pg_backend_pid();
+                """
+        async with self._pool.acquire() as connection:
+            await connection.fetch(query)
