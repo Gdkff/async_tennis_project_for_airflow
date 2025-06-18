@@ -108,7 +108,8 @@ class T24DailyMatchesLoading(Tennis24):
                                 '3': 'Ended'}
         int_fields = ['team_winner', 't1_sets_won', 't2_sets_won', 't1_s1_score', 't1_s1_score_tiebreak', 't2_s1_score',
                       't2_s1_score_tiebreak', 't1_s2_score', 't1_s2_score_tiebreak', 't2_s2_score',
-                      't2_s2_score_tiebreak', 't1_s3_score', 't1_s3_score_tiebreak', 't2_s3_score', 't2_s3_score_tiebreak',
+                      't2_s2_score_tiebreak', 't1_s3_score', 't1_s3_score_tiebreak', 't2_s3_score',
+                      't2_s3_score_tiebreak',
                       't1_s4_score', 't1_s4_score_tiebreak', 't2_s4_score', 't2_s4_score_tiebreak', 't1_s5_score',
                       't1_s5_score_tiebreak', 't2_s5_score', 't2_s5_score_tiebreak']
         match_data = {'t24_match_id': None,
@@ -172,7 +173,7 @@ class T24DailyMatchesLoading(Tennis24):
     async def load_daily_matches(self):
         await self._dbo.init_pool()
         matches = []
-        for day_number in range(-7, 7):
+        for day_number in range(-1, 7):
             print('####### Day number:', str(day_number) + ', Date:', date.today() + timedelta(days=day_number))
             url = f'https://global.flashscore.ninja/107/x/feed/f_2_{day_number}_4_en_1'
             match_page = await super()._get_html_async(url, need_soup=False)
@@ -192,12 +193,19 @@ class T24DailyMatchesLoading(Tennis24):
         await self._dbo.insert_or_update_many('public', 't24_matches', matches, ['t24_match_id'])
         await self._dbo.close_pool()
 
-    async def __get_initial_match_data_by_t24_match_id(self, match_players: dict) -> dict:
+    async def __get_initial_match_data_by_t24_match_id(self, match_players: dict) -> dict | None:
         match_soup = await self._get_html_async(match_players['match_url'])
         html_str = str(match_soup)
         start_place = html_str.find('"participantsData":{')
         end_place = html_str.find(',"eventParticipantEncodedId":')
-        teams = json.loads(html_str[start_place+19:end_place])
+        if start_place == -1 and end_place == -1:
+            return {'t24_match_id': match_players['t24_match_id'],
+                    'initial_match_data_loaded': False,
+                    't1_pl1': None,
+                    't1_pl2': None,
+                    't2_pl1': None,
+                    't2_pl2': None}
+        teams = json.loads(html_str[start_place + 19:end_place])
         match_players_ids_out = {'t24_match_id': match_players['t24_match_id'],
                                  'initial_match_data_loaded': True}
         match_players_ids_out.update({f'{key}_id': None for key in ('t1_pl1', 't1_pl2', 't2_pl1', 't2_pl2')})
@@ -252,6 +260,33 @@ class T24DailyMatchesLoading(Tennis24):
         await self._dbo.insert_or_update_many('public', 't24_matches', matches_update, ['t24_match_id'])
         await self._dbo.close_pool()
 
+    async def __get_pbp_match_data(self, t24_match_id):
+        url = f'https://global.flashscore.ninja/107/x/feed/df_mh_2_{t24_match_id}'
+        bpb_match_string = await self._get_html_async(url, need_soup=False)
+        pbp_match_data = self._bpb_parser.parse_t24_pbp_string(bpb_match_string, t24_match_id)
+        return pbp_match_data
+
+    async def __put_pbp_games_to_db(self, pbp_games: [dict]):
+        pbp_games_to_db = [{'t24_match_id': g['t24_match_id'],
+                            'set': g['set'],
+                            'game': g['game'],
+                            'server': g['server'],
+                            'server_game_points_line': g['server_game_points_line'] if g['game'] < 13 else None,
+                            'server_tiebreak_points_line': g['server_game_points_line'] if g['game'] == 13 else None
+                            } for g in pbp_games]
+        await self._dbo.insert_or_update_many('public', 't24_game_pbp', pbp_games_to_db,
+                                              ['t24_match_id', 'set', 'game'])
+
+    async def load_final_match_data(self):
+        await self._dbo.init_pool()
+        await self._dbo.close_pg_connections()
+        ended_matches = [match['t24_match_id'] for match in await self._dbo.t24_get_ended_matches()]
+        tasks = [self.__get_pbp_match_data(t24_match_id) for t24_match_id in ended_matches[:10]]
+        pbp_matches = await asyncio.gather(*tasks)
+        pbp_games = [pbp_game for match in pbp_matches if match for pbp_game in match if pbp_game]
+        await self.__put_pbp_games_to_db(pbp_games)
+        await self._dbo.close_pool()
+
 
 def t24_load_daily_matches():
     t24 = T24DailyMatchesLoading()
@@ -263,9 +298,15 @@ def t24_load_initial_match_data():
     asyncio.run(t24.load_match_players_data())
 
 
+def t24_load_final_match_data():
+    t24 = T24DailyMatchesLoading()
+    asyncio.run(t24.load_final_match_data())
+
+
 if __name__ == '__main__':
     start_time = datetime.now()
-    t24_load_daily_matches()
+    # t24_load_daily_matches()
     t24_load_initial_match_data()
+    # t24_load_final_match_data()
 
     print('Time length:', datetime.now() - start_time)

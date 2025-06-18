@@ -3,6 +3,7 @@ import urllib.request as ulr
 import asyncio
 from bs4 import BeautifulSoup
 from dags_modules.dbo import DBOperator as dbo
+from dags_modules.t24_match_pbp_parser import T24matchPBPparser
 
 
 class Tennis24:
@@ -12,6 +13,7 @@ class Tennis24:
         self._dbo = dbo()
         self._players = []
         self._new_players = []
+        self._bpb_parser = T24matchPBPparser()
 
     async def _get_html_async(self, page_url: str, need_soup: bool = True) -> BeautifulSoup | str | None:
         def fetch_html(url: str):
