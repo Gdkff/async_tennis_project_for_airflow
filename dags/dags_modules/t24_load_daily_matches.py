@@ -406,10 +406,10 @@ class T24DailyMatchesLoading(Tennis24):
         print('PbP data downloaded')
         await self.__put_pbp_games_to_db(pbp_games)
         matches_loaded_pbp = {x['t24_match_id'] for x in pbp_games}
-        update_matches = [{'t24_match_id': t24_match_id,
-                           'final_pbp_data_loaded': True if t24_match_id in matches_loaded_pbp else False}
-                          for t24_match_id in matches_not_loaded_pbp]
-        await self._dbo.insert_or_update_many('public', 't24_matches', update_matches,
+        update_matches_pbp = [{'t24_match_id': t24_match_id,
+                               'final_pbp_data_loaded': True if t24_match_id in matches_loaded_pbp else False}
+                              for t24_match_id in matches_not_loaded_pbp]
+        await self._dbo.insert_or_update_many('public', 't24_matches', update_matches_pbp,
                                               ['t24_match_id'])
         print('PbP data uploaded to db')
         matches_not_loaded_statistics = [match['t24_match_id']
@@ -422,10 +422,10 @@ class T24DailyMatchesLoading(Tennis24):
         await self._dbo.insert_or_update_many('public', 't24_set_statistics', sets_statistic,
                                               ['t24_match_id', 'team_num', 'set'])
         matches_loaded_statistics = {x['t24_match_id'] for x in sets_statistic}
-        update_matches = [{'t24_match_id': t24_match_id,
-                           'final_pbp_data_loaded': True if t24_match_id in matches_loaded_statistics else False}
-                          for t24_match_id in matches_not_loaded_statistics]
-        await self._dbo.insert_or_update_many('public', 't24_matches', update_matches,
+        update_matches_stat = [{'t24_match_id': t24_match_id,
+                                'final_statistics_data_loaded': True if t24_match_id in matches_loaded_statistics else False}
+                               for t24_match_id in matches_not_loaded_statistics]
+        await self._dbo.insert_or_update_many('public', 't24_matches', update_matches_stat,
                                               ['t24_match_id'])
         print('Statistics data uploaded to db')
         await self._dbo.close_pool()
