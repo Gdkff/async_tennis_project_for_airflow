@@ -423,7 +423,7 @@ class T24DailyMatchesLoading(Tennis24):
                                               ['t24_match_id', 'team_num', 'set'])
         matches_loaded_statistics = {x['t24_match_id'] for x in sets_statistic}
         update_matches_stat = [{'t24_match_id': t24_match_id,
-                                'final_statistics_data_loaded': True if t24_match_id in matches_loaded_statistics else False}
+                                'final_statistics_loaded': True if t24_match_id in matches_loaded_statistics else False}
                                for t24_match_id in matches_not_loaded_statistics]
         await self._dbo.insert_or_update_many('public', 't24_matches', update_matches_stat,
                                               ['t24_match_id'])
