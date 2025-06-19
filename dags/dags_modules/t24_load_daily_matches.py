@@ -200,14 +200,14 @@ class T24DailyMatchesLoading(Tennis24):
         end_place = html_str.find(',"eventParticipantEncodedId":')
         if start_place == -1 and end_place == -1:
             return {'t24_match_id': match_players['t24_match_id'],
-                    'initial_match_data_loaded': False,
+                    'initial_player_data_loaded': False,
                     't1_pl1': None,
                     't1_pl2': None,
                     't2_pl1': None,
                     't2_pl2': None}
         teams = json.loads(html_str[start_place + 19:end_place])
         match_players_ids_out = {'t24_match_id': match_players['t24_match_id'],
-                                 'initial_match_data_loaded': True}
+                                 'initial_player_data_loaded': True}
         match_players_ids_out.update({f'{key}_id': None for key in ('t1_pl1', 't1_pl2', 't2_pl1', 't2_pl2')})
         for team_t24, team_db in {'home': 't1', 'away': 't2'}.items():
             for pl_num, pl in enumerate(teams[team_t24], 1):
