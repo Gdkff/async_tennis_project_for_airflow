@@ -35,6 +35,6 @@ with DAG(
     )
 
     task_t24_load_finish_match_data = PythonOperator(
-        task_id="t24_load_initial_match_data",
+        task_id="t24_load_final_match_data",
         python_callable=t24_load_final_match_data
     )
