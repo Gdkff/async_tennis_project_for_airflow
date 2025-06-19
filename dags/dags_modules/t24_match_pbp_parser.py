@@ -62,6 +62,7 @@ class T24matchPBPparser:
     def __parse_pbp_game_line(self, t24_match_id: str, line_dict: dict,
                               set_num: int, game_num: int, t1_bp: list, t2_bp: list):
         # print('serve:', line_dict['HG'], 'winner:', line_dict['HK'], 'T1:', line_dict['HC'], 'T2', line_dict['HE'])
+        # print(t24_match_id, line_dict)
         server = int(line_dict['HG'])
         winner = int(line_dict['HK'])
         game_pbp = line_dict['HL']
@@ -105,6 +106,7 @@ class T24matchPBPparser:
         return game_pbp_data
 
     def parse_t24_pbp_string(self, t24_pbp: str, t24_match_id: str):
+        print(t24_match_id)
         pbp_split = t24_pbp.split('¬~')
         game_num = 1
         t1_bp = []
@@ -139,7 +141,7 @@ class T24matchPBPparser:
                 # print('HB', set_or_tb)
                 tiebreak_points = []
             elif line[:2] == 'HC':
-                if not line_dict.get('HL'):
+                if not line_dict.get('HL') or not line_dict.get('HG') or not line_dict.get('HK'):
                     if line_dict.get('HD'):
                         continue
                     # print('HC', line_dict)

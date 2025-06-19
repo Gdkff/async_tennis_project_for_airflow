@@ -267,24 +267,167 @@ class T24DailyMatchesLoading(Tennis24):
         return pbp_match_data
 
     async def __put_pbp_games_to_db(self, pbp_games: [dict]):
-        pbp_games_to_db = [{'t24_match_id': g['t24_match_id'],
-                            'set': g['set'],
-                            'game': g['game'],
-                            'server': g['server'],
-                            'server_game_points_line': g['server_game_points_line'] if g['game'] < 13 else None,
-                            'server_tiebreak_points_line': g['server_game_points_line'] if g['game'] == 13 else None
-                            } for g in pbp_games]
+        all_dim_pbp_game_lines = await self._dbo.select('public', 'dim_game_pbp', ['server_points_line'])
+        all_dim_pbp_game_lines = [x['server_points_line'] for x in all_dim_pbp_game_lines]
+        new_dim_pbp_game_lines_to_db = []
+        all_dim_pbp_tiebreak_lines = await self._dbo.select('public', 'dim_tiebreak_pbp', ['server_points_line'])
+        all_dim_pbp_tiebreak_lines = [x['server_points_line'] for x in all_dim_pbp_tiebreak_lines]
+        new_dim_pbp_tiebreak_lines_to_db = []
+        pbp_games_to_db = []
+        for g in pbp_games:
+            if g['game'] != 13 and g['server_game_points_line'] not in all_dim_pbp_game_lines:
+                new_dim_pbp_game_lines_to_db.append({
+                    'server_points_line': g['server_game_points_line'],
+                    'points_total': g['points_total'],
+                    'server_points_won': g['server_points_won'],
+                    'server_win': g['server_win'],
+                    'receiver_points_won': g['receiver_points_won'],
+                    'receiver_breakpoints': g['receiver_breakpoints'],
+                    'receiver_breakpoints_converted': g['receiver_breakpoints_converted']
+                })
+                all_dim_pbp_game_lines.append(g['server_game_points_line'])
+            if g['game'] == 13 and g['server_game_points_line'] not in all_dim_pbp_tiebreak_lines:
+                new_dim_pbp_tiebreak_lines_to_db.append({
+                    'server_points_line': g['server_game_points_line'],
+                    'points_total': g['points_total'],
+                    'first_server_win': g['first_server_win'],
+                    'first_server_points_on_serve_line': g['first_server_points_on_serve_str'],
+                    'second_server_points_on_serve_line': g['second_server_points_on_serve_str'],
+                    'first_server_points_on_serve_won': g['first_server_points_on_serve_won'],
+                    'first_server_points_on_receive_won': g['first_server_points_on_receive_won'],
+                    'second_server_points_on_serve_won': g['second_server_points_on_serve_won'],
+                    'second_server_points_on_receive_won': g['second_server_points_on_receive_won']
+                })
+                all_dim_pbp_tiebreak_lines.append(g['server_game_points_line'])
+            pbp_games_to_db.append(
+                {'t24_match_id': g['t24_match_id'],
+                 'set': g['set'],
+                 'game': g['game'],
+                 'server': g['server'],
+                 'server_game_points_line': g['server_game_points_line'] if g['game'] < 13 else None,
+                 'server_tiebreak_points_line': g['server_game_points_line'] if g['game'] == 13 else None
+                 })
+        await self._dbo.insert_or_update_many('public', 'dim_game_pbp', new_dim_pbp_game_lines_to_db,
+                                              ['server_points_line'])
+        await self._dbo.insert_or_update_many('public', 'dim_tiebreak_pbp', new_dim_pbp_tiebreak_lines_to_db,
+                                              ['server_points_line'])
         await self._dbo.insert_or_update_many('public', 't24_game_pbp', pbp_games_to_db,
                                               ['t24_match_id', 'set', 'game'])
+
+    async def __get_match_statistic_by_match_id(self, t24_match_id: str) -> list:
+        url = f'https://global.flashscore.ninja/107/x/feed/df_st_2_{t24_match_id}'
+        data = await self._get_html_async(url, need_soup=False)
+        db_stat_fields = ('aces', 'double_faults', 'service_points', 'first_serves_won', 'first_serves_success',
+                          'second_serves_won', 'break_points_converted', 'break_points_created',
+                          'average_first_serve_speed_km_h', 'average_second_serve_speed_km_h', 'winners',
+                          'unforced_errors', 'net_points_won', 'net_approaches')
+        stats_keys_dict = {'Aces': ('aces',),
+                           'Double Faults': ('double_faults',),
+                           'Service Points Won': (None, None, 'service_points'),
+                           '1st Serve Points Won': (None, 'first_serves_won', 'first_serves_success'),
+                           '2nd Serve Points Won': (None, 'second_serves_won', None),
+                           'Break Points Converted': (None, 'break_points_converted', 'break_points_created'),
+                           'Average 1st Serve Speed': ('average_first_serve_speed_km_h',),
+                           'Average 2nd Serve Speed': ('average_second_serve_speed_km_h',),
+                           'Winners': ('winners',),
+                           'Unforced Errors': ('unforced_errors',),
+                           'Net Points Won': (None, 'net_points_won', 'net_approaches')
+                           }
+        delimiters_dict = {'% (': ('% (', '/', ')'),
+                           ' km/h': ' km/h',
+                           '': None}
+        data = data.split('¬~')
+        match_statistic = []
+        section, period, key_out, t1_val, t2_val, statistic = None, None, None, None, None, None
+        period_num = 0
+        for part in data:
+            parts_of_part = part.split('¬')
+            if part[:2] in ('SE', 'A1') and period_num > 0:
+                t1_sum_to_check = 0
+                t2_sum_to_check = 0
+                for stat_field in db_stat_fields:
+                    t1_sum_to_check += statistic['t1'][stat_field] if statistic['t1'].get(stat_field) else 0
+                    t2_sum_to_check += statistic['t2'][stat_field] if statistic['t2'].get(stat_field) else 0
+                if t1_sum_to_check > 0:
+                    match_statistic.append(statistic['t1'].copy())
+                if t2_sum_to_check > 0:
+                    match_statistic.append(statistic['t2'].copy())
+            if part[:2] == 'SE':
+                period_num += 1
+                period = parts_of_part[0].split('÷')[1]
+                period = 0 if period == 'Match' else int(period.replace('Set ', ''))
+                statistic = {'t1': {'t24_match_id': t24_match_id,
+                                    'team_num': 1,
+                                    'set': period},
+                             't2': {'t24_match_id': t24_match_id,
+                                    'team_num': 2,
+                                    'set': period}}
+                empty_fields_dict = {x: None for x in db_stat_fields}
+                statistic['t1'].update(empty_fields_dict.copy())
+                statistic['t2'].update(empty_fields_dict.copy())
+            if part[:2] == 'SG':
+                for part_of_part in parts_of_part:
+                    key, value = part_of_part.split('÷')
+                    if key == 'SG':
+                        key_out = value
+                    if key == 'SH':
+                        t1_val = value
+                    if key == 'SI':
+                        t2_val = value
+                if key_out in stats_keys_dict:
+                    db_keys = stats_keys_dict[key_out]
+                    for team_num, team_value in enumerate((t1_val, t2_val), 1):
+                        team_line_vals = []
+                        for check_val in delimiters_dict:
+                            if check_val in team_value:
+                                delimiters = delimiters_dict[check_val]
+                                if not delimiters:
+                                    team_line_vals = [int(team_value)]
+                                    break
+                                for delimiter in delimiters:
+                                    team_value = team_value.replace(delimiter, '#')
+                                t = team_value.strip('#')
+                                t = t.split('#')
+                                team_line_vals = [int(x) for x in t]
+                                break
+                        result = {k: v for k, v in zip(db_keys, team_line_vals) if k is not None}
+                        statistic[f't{team_num}'].update(result)
+        return match_statistic
 
     async def load_final_match_data(self):
         await self._dbo.init_pool()
         await self._dbo.close_pg_connections()
-        ended_matches = [match['t24_match_id'] for match in await self._dbo.t24_get_ended_matches()]
-        tasks = [self.__get_pbp_match_data(t24_match_id) for t24_match_id in ended_matches[:10]]
+        matches_not_loaded_pbp = [match['t24_match_id']
+                                  for match in await self._dbo.t24_get_ended_matches_non_loaded_pbp()]
+        print(f'{len(matches_not_loaded_pbp)} ended matches without PbP loaded')
+        tasks = [self.__get_pbp_match_data(t24_match_id) for t24_match_id in matches_not_loaded_pbp]
         pbp_matches = await asyncio.gather(*tasks)
         pbp_games = [pbp_game for match in pbp_matches if match for pbp_game in match if pbp_game]
+        print('PbP data downloaded')
         await self.__put_pbp_games_to_db(pbp_games)
+        matches_loaded_pbp = {x['t24_match_id'] for x in pbp_games}
+        update_matches = [{'t24_match_id': t24_match_id,
+                           'final_pbp_data_loaded': True if t24_match_id in matches_loaded_pbp else False}
+                          for t24_match_id in matches_not_loaded_pbp]
+        await self._dbo.insert_or_update_many('public', 't24_matches', update_matches,
+                                              ['t24_match_id'])
+        print('PbP data uploaded to db')
+        matches_not_loaded_statistics = [match['t24_match_id']
+                                         for match in await self._dbo.t24_get_ended_matches_non_loaded_statistics()]
+        print(f'{len(matches_not_loaded_statistics)} ended matches without statistics loaded')
+        tasks = [self.__get_match_statistic_by_match_id(t24_match_id) for t24_match_id in matches_not_loaded_statistics]
+        sets_statistic = await asyncio.gather(*tasks)
+        sets_statistic = [set_stat for inner in sets_statistic if inner for set_stat in inner if set_stat]
+        print('Statistics data downloaded')
+        await self._dbo.insert_or_update_many('public', 't24_set_statistics', sets_statistic,
+                                              ['t24_match_id', 'team_num', 'set'])
+        matches_loaded_statistics = {x['t24_match_id'] for x in sets_statistic}
+        update_matches = [{'t24_match_id': t24_match_id,
+                           'final_pbp_data_loaded': True if t24_match_id in matches_loaded_statistics else False}
+                          for t24_match_id in matches_not_loaded_statistics]
+        await self._dbo.insert_or_update_many('public', 't24_matches', update_matches,
+                                              ['t24_match_id'])
+        print('Statistics data uploaded to db')
         await self._dbo.close_pool()
 
 
@@ -306,7 +449,7 @@ def t24_load_final_match_data():
 if __name__ == '__main__':
     start_time = datetime.now()
     # t24_load_daily_matches()
-    t24_load_initial_match_data()
-    # t24_load_final_match_data()
+    # t24_load_initial_match_data()
+    t24_load_final_match_data()
 
     print('Time length:', datetime.now() - start_time)

@@ -79,7 +79,7 @@ class DBOperator:
                     print(e)
                     exit(1)
 
-    async def select(self, db_name: str, table_name: str, select_columns_list: [str],
+    async def select(self, db_name: str, table_name: str, select_columns_list: list,
                      where_conditions: dict | None = None) -> [dict]:
         selected_columns = ', '.join(select_columns_list) if select_columns_list else '*'
         query = f"SELECT {selected_columns} FROM {db_name}.{table_name}"
@@ -115,11 +115,21 @@ class DBOperator:
         async with self._pool.acquire() as connection:
             await connection.fetch(query)
 
-    async def t24_get_ended_matches(self):
+    async def t24_get_ended_matches_non_loaded_pbp(self):
         select_query = """  select t24_match_id
                             from public.t24_matches
                             where match_status_short_code = 3 
-                              and final_match_data_loaded is null
+                              and final_pbp_data_loaded is null
+                       """
+        async with self._pool.acquire() as connection:
+            result = await connection.fetch(select_query)
+        return [dict(record) for record in result]
+
+    async def t24_get_ended_matches_non_loaded_statistics(self):
+        select_query = """  select t24_match_id
+                            from public.t24_matches
+                            where match_status_short_code = 3 
+                              and final_statistics_loaded is null
                        """
         async with self._pool.acquire() as connection:
             result = await connection.fetch(select_query)
