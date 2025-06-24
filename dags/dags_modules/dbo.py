@@ -49,27 +49,33 @@ class DBOperator:
                                     conflict_fields: [str], on_conflict_update: bool = True):
         if not records:
             return
-        conflict_fields = ', '.join(conflict_fields)
-        columns = ', '.join(records[0].keys())
-        placeholders = ', '.join(f"${i}" for i in range(1, len(records[0].keys()) + 1))
-        update_set = ', '.join(f"{col} = EXCLUDED.{col}" for col in records[0].keys() if col not in conflict_fields)
-        if update_set:
-            update_set += f', record_updated = ${len(records[0].keys()) + 1}'
-        else:
-            update_set += f'record_updated = ${len(records[0].keys()) + 1}'
+
+        conflict_fields_list = conflict_fields
+        conflict_fields_str = ', '.join(conflict_fields_list)
+        columns = list(records[0].keys())
+        columns_str = ', '.join(columns)
+        placeholders = ', '.join(f"${i}" for i in range(1, len(columns) + 1))
+
+        update_fields = [col for col in columns if col not in conflict_fields_list]
+        update_set = ', '.join(f"{col} = EXCLUDED.{col}" for col in update_fields)
+
+        update_set = f"{update_set}, record_updated = ${len(columns) + 1}" if update_set else f"record_updated = ${len(columns) + 1}"
+
         if on_conflict_update:
-            do_on_conflict = f'UPDATE SET {update_set};'
+            do_on_conflict = f'UPDATE SET {update_set}'
         else:
-            do_on_conflict = 'NOTHING;'
+            do_on_conflict = 'NOTHING'
+
         query = f"""
-           INSERT INTO {schema}.{table} ({columns})
+           INSERT INTO {schema}.{table} ({columns_str})
            VALUES ({placeholders})
-           ON CONFLICT ({conflict_fields}) DO {do_on_conflict}
+           ON CONFLICT ({conflict_fields_str}) DO {do_on_conflict}
            """
         if on_conflict_update:
-            values = [tuple([record[col] for col in record] + [datetime.datetime.now()]) for record in records]
+            values = [tuple([record[col] for col in columns] + [datetime.datetime.now()]) for record in records]
         else:
-            values = [tuple([record[col] for col in record]) for record in records]
+            values = [tuple([record[col] for col in columns]) for record in records]
+
         async with self._pool.acquire() as connection:
             async with connection.transaction():
                 try:
@@ -131,6 +137,17 @@ class DBOperator:
                             where match_status_short_code = 3 
                               and final_statistics_loaded is null
                        """
+        async with self._pool.acquire() as connection:
+            result = await connection.fetch(select_query)
+        return [dict(record) for record in result]
+
+    async def t24_get_tournaments_urls_to_load_years(self):
+        select_query = f""" select  id, 
+                                    t24_trn_archive_full_url
+                            from public.t24_tournaments
+                            where t24_trn_years_loaded is null
+                            order by 1
+                        """
         async with self._pool.acquire() as connection:
             result = await connection.fetch(select_query)
         return [dict(record) for record in result]

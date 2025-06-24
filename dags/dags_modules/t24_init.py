@@ -8,8 +8,8 @@ from dags_modules.t24_match_pbp_parser import T24matchPBPparser
 
 class Tennis24:
     def __init__(self):
-        self.__concurrency = 100
-        self.__semaphore = asyncio.Semaphore(self.__concurrency)
+        self._concurrency = 50
+        self._semaphore = asyncio.Semaphore(self._concurrency)
         self._dbo = dbo()
         self._players = []
         self._new_players = []
@@ -21,7 +21,7 @@ class Tennis24:
             with ulr.urlopen(req) as response:
                 return response.read().decode('utf-8')
 
-        async with self.__semaphore:
+        async with self._semaphore:
             while True:
                 try:
                     # print('Getting from:', page_url)
