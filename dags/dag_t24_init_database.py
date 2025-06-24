@@ -17,7 +17,7 @@ with DAG(
     dag_id='t24_init_database',
     default_args=default_args,
     description='First initial loading all data from Tennis 24',
-    schedule="* * * * *",
+    schedule=None,
     start_date=datetime(2025, 1, 1),
     catchup=False,
 ) as dag:
