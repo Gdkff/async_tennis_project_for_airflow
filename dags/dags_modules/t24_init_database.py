@@ -24,7 +24,7 @@ class T24InitDataBase(Tennis24):
                     {'t24_trn_archive_full_url': f'https://www.tennis24.com/{trn_type}/{line_dict['MU']}/archive/',
                      't24_trn_type': trn_type,
                      't24_trn_name': line_dict['MU']})
-                print(f'https://www.tennis24.com/{trn_type}/{line_dict['MU']}/archive/')
+                # print(f'https://www.tennis24.com/{trn_type}/{line_dict['MU']}/archive/')
         return tournaments_out
 
     async def __get_tournament_years(self, tournament_data: dict) -> dict | None:
@@ -40,7 +40,7 @@ class T24InitDataBase(Tennis24):
                     continue
                 year = int(year)
                 tournament_data['years'].append(year)
-        print(tournament_data)
+        # print(tournament_data)
         return tournament_data
 
     async def load_tournaments(self):
