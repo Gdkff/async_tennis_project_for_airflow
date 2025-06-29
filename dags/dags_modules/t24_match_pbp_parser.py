@@ -128,7 +128,10 @@ class T24matchPBPparser:
                     match_pbp_data_out.append(self.__parse_tiebreak(tiebreak_points, t24_match_id, set_num))
                     tiebreak_points = []
                 set_or_tb = 'set'
-                set_num = int(line_dict['HB'].split(' - ')[-1].split()[-1])
+                try:
+                    set_num = int(line_dict['HB'].split(' - ')[-1].split()[-1])
+                except IndexError:
+                    continue
                 # print('HA', set_or_tb)
                 game_num = 1
             elif line[:2] == 'A1':
