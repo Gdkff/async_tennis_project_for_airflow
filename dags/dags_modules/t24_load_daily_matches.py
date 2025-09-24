@@ -448,8 +448,8 @@ def t24_load_final_match_data():
 
 if __name__ == '__main__':
     start_time = datetime.now()
-    # t24_load_daily_matches()
+    t24_load_daily_matches()
     # t24_load_initial_match_data()
-    t24_load_final_match_data()
+    # t24_load_final_match_data()
 
     print('Time length:', datetime.now() - start_time)
