@@ -2,8 +2,8 @@ from dags_modules.t24_init import Tennis24, asyncio
 from datetime import datetime, date, timedelta
 from settings.config import tz
 import re
-from t24_tournaments import T24Tournaments
-from t24_players import T24Players
+from dags_modules.t24_tournaments import T24Tournaments
+from dags_modules.t24_players import T24Players
 import json
 
 
