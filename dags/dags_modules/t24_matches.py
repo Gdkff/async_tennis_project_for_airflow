@@ -206,7 +206,7 @@ class T24Matches(Tennis24):
         self.T24Players = T24Players()
         await self.T24Players.init_async()
         matches = []
-        for day_number in range(-7, 7):
+        for day_number in range(-1, 7):
             print('####### Day number:', str(day_number) + ', Date:', date.today() + timedelta(days=day_number))
             url = f'https://global.flashscore.ninja/107/x/feed/f_2_{day_number}_4_en_1'
             match_page = await super()._get_html_async(url, need_soup=False)
