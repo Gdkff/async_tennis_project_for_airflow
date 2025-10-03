@@ -1,9 +1,7 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from datetime import datetime, timedelta
-from dags_modules.t24_load_daily_matches import (t24_load_daily_matches,
-                                                 t24_load_initial_match_data,
-                                                 t24_load_final_match_data)
+from dags_modules.t24_matches import t24_load_daily_matches
 
 
 default_args = {
@@ -27,20 +25,4 @@ with DAG(
     task_t24_load_daily_matches = PythonOperator(
         task_id="t24_load_daily_matches",
         python_callable=t24_load_daily_matches
-    )
-
-    task_t24_load_initial_match_data = PythonOperator(
-        task_id="t24_load_initial_match_data",
-        python_callable=t24_load_initial_match_data
-    )
-
-    task_t24_load_finish_match_data = PythonOperator(
-        task_id="t24_load_final_match_data",
-        python_callable=t24_load_final_match_data
-    )
-
-    (
-        task_t24_load_daily_matches >>
-        task_t24_load_initial_match_data >>
-        task_t24_load_finish_match_data
     )

@@ -171,6 +171,11 @@ class T24DailyMatchesLoading(Tennis24):
         return match_data
 
     async def load_daily_matches(self):
+        """
+        Загружает в базу данных матчи со вчера и на 7 дней вперед
+
+        :return:
+        """
         await self._dbo.init_pool()
         matches = []
         for day_number in range(-1, 7):

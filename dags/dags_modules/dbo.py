@@ -39,7 +39,7 @@ class DBOperator:
         values = tuple(list(update_dict.values()) + [datetime.datetime.now(), id])
         update_query = f'''
             UPDATE {db_name}.{table_name}
-            SET {set_string}, record_updated = ${len(values) - 1}
+            SET {set_string}, record_updated_at = ${len(values) - 1}
             WHERE id = ${len(values)};
         '''
         async with self._pool.acquire() as connection:
@@ -49,17 +49,18 @@ class DBOperator:
                                     conflict_fields: [str], on_conflict_update: bool = True):
         if not records:
             return
-
-        conflict_fields_list = conflict_fields
-        conflict_fields_str = ', '.join(conflict_fields_list)
-        columns = list(records[0].keys())
-        columns_str = ', '.join(columns)
-        placeholders = ', '.join(f"${i}" for i in range(1, len(columns) + 1))
-
-        update_fields = [col for col in columns if col not in conflict_fields_list]
-        update_set = ', '.join(f"{col} = EXCLUDED.{col}" for col in update_fields)
-
-        update_set = f"{update_set}, record_updated = ${len(columns) + 1}" if update_set else f"record_updated = ${len(columns) + 1}"
+        for row in records:
+            if 'record_updated_at' not in row:
+                row.update({'record_updated_at': datetime.datetime.now()})
+            if 'record_created_at' not in row:
+                row.update({'record_created_at': datetime.datetime.now()})
+        conflict_fields_str = ', '.join(conflict_fields)
+        columns_insert = list(records[0].keys())
+        columns_insert_str = ', '.join(columns_insert)
+        columns_update = [col for col in list(records[0].keys()) if col not in conflict_fields + ['record_created_at', 'id']]
+        columns_update_str = ', '.join(f"{col} = EXCLUDED.{col}" for col in columns_update)
+        placeholders = ', '.join(f"${i}" for i in range(1, len(columns_insert) + 1))
+        update_set = f"{columns_update_str}"
 
         if on_conflict_update:
             do_on_conflict = f'UPDATE SET {update_set}'
@@ -67,14 +68,11 @@ class DBOperator:
             do_on_conflict = 'NOTHING'
 
         query = f"""
-           INSERT INTO {schema}.{table} ({columns_str})
+           INSERT INTO {schema}.{table} ({columns_insert_str})
            VALUES ({placeholders})
            ON CONFLICT ({conflict_fields_str}) DO {do_on_conflict}
            """
-        if on_conflict_update:
-            values = [tuple([record[col] for col in columns] + [datetime.datetime.now()]) for record in records]
-        else:
-            values = [tuple([record[col] for col in columns]) for record in records]
+        values = [tuple([record[col] for col in columns_insert]) for record in records]
 
         async with self._pool.acquire() as connection:
             async with connection.transaction():
@@ -143,10 +141,23 @@ class DBOperator:
 
     async def t24_get_tournaments_urls_to_load_years(self):
         select_query = f""" select  id, 
-                                    t24_trn_archive_full_url
+                                    trn_archive_full_url
                             from public.t24_tournaments
-                            where t24_trn_years_loaded is null
+                            where trn_years_loaded is null
                             order by 1
+                        """
+        async with self._pool.acquire() as connection:
+            result = await connection.fetch(select_query)
+        return [dict(record) for record in result]
+
+    async def t24_get_tournaments_years_to_load_draw_ids(self):
+        select_query = f""" select 	ty.id, 
+                                    ty.trn_id,
+                                    ty.trn_year,
+                                    'https://www.tennis24.com/' || t.trn_type || '/' || t.trn_name || '-' || ty.trn_year as trn_year_url
+                            from public.t24_tournaments_years ty
+                            left join public.t24_tournaments t on ty.trn_id = t.id
+                            where draws_id_loaded is null
                         """
         async with self._pool.acquire() as connection:
             result = await connection.fetch(select_query)
