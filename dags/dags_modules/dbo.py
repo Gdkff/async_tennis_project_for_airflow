@@ -75,13 +75,12 @@ class DBOperator:
         values = [tuple([record[col] for col in columns_insert]) for record in records]
 
         async with self._pool.acquire() as connection:
-            async with connection.transaction():
-                try:
-                    await connection.executemany(query, values)
-                except Exception as e:
-                    print(query, values)
-                    print(e)
-                    exit(1)
+            try:
+                await connection.executemany(query, values)
+            except Exception as e:
+                print(query, values)
+                print(e)
+                exit(1)
 
     async def select(self, db_name: str, table_name: str, select_columns_list: list,
                      where_conditions: dict | None = None) -> [dict]:
