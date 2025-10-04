@@ -24,7 +24,7 @@ class T24Tournaments(Tennis24):
             print(self.last_tournament_id)
 
     async def __get_db_tournaments_years(self):
-        tournaments_years = await self._dbo.select('public', 't24_tournaments_years', ['id', 'trn_id', 'trn_year', ])
+        tournaments_years = await self._dbo.select('public', 't24_tournaments_years', ['id', 'trn_id', 'trn_year'], {'first_draw_id': 'not null'})
         self.tournaments_years = {(ty['trn_id'], ty['trn_year']) for ty in tournaments_years}
         if tournaments_years:
             self.last_tournaments_years_id = max(tournaments_years, key=lambda x: x['id'])['id']
@@ -143,12 +143,12 @@ class T24Tournaments(Tennis24):
                     if (trn['id'], year) not in self.tournaments_years:
                         trn_years_data_to_db.append({'id': self.last_tournaments_years_id + 1,
                                                      'trn_id': trn['id'],
-                                                     'trn_year': year
+                                                     'trn_year': year,
+                                                     'draws_id_loaded': None
                                                      })
                         self.last_tournaments_years_id += 1
                         print('current_tournaments_years_id =', self.last_tournaments_years_id)
                         self.tournaments_years.add((trn['id'], year))
-            # print(trn_years_data_to_db)
             await self._dbo.insert_or_update_many('public', 't24_tournaments_years', trn_years_data_to_db,
                                                   ['trn_id', 'trn_year'], on_conflict_update=True)
             print(f'{len(trn_years_data_to_db)} records loaded to t24_tournaments_years')

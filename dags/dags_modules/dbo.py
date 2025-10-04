@@ -98,6 +98,7 @@ class DBOperator:
                     keys_to_delete.append(key)
                 elif value.lower() in ['not null', 'is not null']:
                     conditions_with_null += [f'{key} is not null']
+                    keys_to_delete.append(key)
             for key in keys_to_delete:
                 where_conditions.pop(key)
             condition = ' AND '.join(
