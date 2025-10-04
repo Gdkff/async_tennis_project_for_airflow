@@ -87,14 +87,32 @@ class DBOperator:
                      where_conditions: dict | None = None) -> [dict]:
         selected_columns = ', '.join(select_columns_list) if select_columns_list else '*'
         query = f"SELECT {selected_columns} FROM {db_name}.{table_name}"
-        condition_clause = ""
+        condition = ""
         condition_values = []
         if where_conditions:
-            condition_clause = ' WHERE ' + ' AND '.join(
+            conditions_with_null = []
+            keys_to_delete = []
+            for key, value in where_conditions.items():
+                if value is None or value.lower() in ['null', 'is null']:
+                    conditions_with_null += [f'{key} is null']
+                    keys_to_delete.append(key)
+                elif value.lower() in ['not null', 'is not null']:
+                    conditions_with_null += [f'{key} is not null']
+            for key in keys_to_delete:
+                where_conditions.pop(key)
+            condition = ' AND '.join(
                 f"{key} = ${i + 1}" for i, key in enumerate(where_conditions.keys())
             )
+            conditions_with_null = ' AND '.join(conditions_with_null)
+            if condition:
+                if conditions_with_null:
+                    condition = condition + ' AND ' + conditions_with_null
+            else:
+                condition = conditions_with_null
+            condition = ' WHERE ' + condition
             condition_values = list(where_conditions.values())
-        query += condition_clause
+            print(condition_values)
+        query += condition
         print(query)
         async with self._pool.acquire() as connection:
             result = await connection.fetch(query, *condition_values)

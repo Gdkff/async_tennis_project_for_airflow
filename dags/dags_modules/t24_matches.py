@@ -220,6 +220,7 @@ class T24Matches(Tennis24):
                                        'is_qualification': current_tournament.get('is_qualification')})
                     matches.append(match_data)
         await self.__get_and_put_all_new_players_from_matches(matches)
+        await self.T24Players.load_players_data()
         await self._dbo.insert_or_update_many('public', 't24_matches', matches, ['t24_match_id'])
         await self._dbo.close_pool()
 

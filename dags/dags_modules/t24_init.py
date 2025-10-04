@@ -45,6 +45,29 @@ class Tennis24:
             return BeautifulSoup(html, 'lxml')
         return html
 
+    async def _get_url_redirect_endpoint(self, page_url: str) -> str | None:
+        def fetch_redirect(url: str):
+            req = ulr.Request(url, headers={'x-fsign': 'SW9D1eZo'})
+            with ulr.urlopen(req) as response:
+                return response.geturl()
+
+        async with self._semaphore:
+            while True:
+                try:
+                    final_url = await asyncio.to_thread(fetch_redirect, page_url)
+                    return final_url
+                except urllib.error.HTTPError as http_er:
+                    if http_er.code in (301, 302, 303, 307, 308):
+                        return http_er.headers.get("Location")
+                    elif http_er.code == 404:
+                        return None
+                    else:
+                        print(f'!!!!! Redirect check failed. URL: {page_url}\nError:', http_er)
+                        await asyncio.sleep(3)
+                except Exception as e:
+                    print(f'!!!!! Redirect check failed. URL: {page_url}\nError:', e)
+                    await asyncio.sleep(3)
+
     async def _load_all_players_from_db(self):
         players = await self._dbo.select('public', 't24_players', ['t24_pl_id'], where_conditions=None)
         self._all_player_ids = {player['t24_pl_id'] for player in players}
@@ -81,22 +104,4 @@ class Tennis24:
                     match_players_ids_out.update({f'{team_db}_pl{pl_num}_id': pl['id']})
         return match_players_ids_out
 
-    async def __get_t24_pl_full_data(self, t24_pl_id: str) -> (str, datetime):
-        player_soup = await self._get_html_async(f'https://www.tennis24.com/?r=4:{t24_pl_id}')
-        birthday = None
-        container__heading = player_soup.find('div', class_='container__heading')
-        pl_full_name = container__heading.find('div', class_='heading__name').text
-        scripts = container__heading.find_all('script')
-        for script in scripts:
-            script_text = script.text
-            if 'getAge' in script_text:
-                first_elm = script_text.find('getAge') + 7
-                last_elm = first_elm + script_text[first_elm:].find(')')
-                timestamp_str = script_text[first_elm:last_elm]
-                if not timestamp_str.isdigit():
-                    timestamp_str = re.sub(r"\D", "", timestamp_str)
-                timestamp = int(timestamp_str)
-                print(timestamp_str, timestamp)
-                birthday = datetime.fromtimestamp(timestamp, tz=timezone.utc).date()
-        print(f'https://www.tennis24.com/?r=4:{t24_pl_id}')
-        return pl_full_name, birthday
+
