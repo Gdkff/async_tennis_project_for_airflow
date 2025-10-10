@@ -1,27 +1,19 @@
+import asyncpg
 from dags_modules.t24_init import Tennis24, asyncio
 from datetime import datetime, date, timedelta
 from settings.config import tz
 import re
-from dags_modules.t24_tournaments import T24Tournaments
-from dags_modules.t24_players import T24Players
 import json
 
 
 class T24Matches(Tennis24):
-    def __init__(self):
+    def __init__(self, pool: asyncpg.pool.Pool):
         super().__init__()
-        self.__all_trn_years = {}
-        self.T24Tournaments = None
-        self.all_tournaments_years = dict()
-        self.T24Players = None
-        self.all_players = set()
-        self.__new_players = set()
+        self.__pool = pool
+        self.__daily_match_pages = list()
 
-    async def __load_all_trn_years(self):
-        trn_years = await self._dbo.select('public', 't24_tournaments_years', ['id', 'first_draw_id'])
-        self.__all_trn_years = {t['first_draw_id']: t['id'] for t in trn_years if t['first_draw_id']}
-
-    async def __tournament_line_parsing(self, tournament_line: str):
+    @staticmethod
+    async def __tournament_line_parsing(tournament_line: str, all_tournament_draw_ids: dict):
         trn_data = {'is_qualification': False}
         if ' - Qualification' in tournament_line:
             trn_data['is_qualification'] = True
@@ -29,19 +21,13 @@ class T24Matches(Tennis24):
         for line_part in tournament_line.split('¬'):
             if line_part[:3] == 'ZE÷':
                 first_draw_id = line_part.split('÷')[-1]
-                trn_data['trn_year_id'] = self.__all_trn_years.get(first_draw_id)
+                trn_data['trn_year_id'] = all_tournament_draw_ids.get(first_draw_id)
             if line_part[:3] == 'ZL÷':
                 url_part = line_part.split('÷')[-1]
                 url_part_split = url_part.split('/')
                 trn_data.update({'trn_archive_full_url': f'https://www.tennis24.com{url_part}archive/',
                                  'trn_type': url_part_split[1],
                                  'trn_name': url_part_split[2]})
-        if trn_data.get('trn_year_id') is None:
-            print('!!! trn_year_id is null')
-            print(trn_data)
-            await self.T24Tournaments.load_tournaments(tournament_to_load=trn_data, on_conflict_update=True)
-            await self.T24Tournaments.load_tournaments_years()
-            await self.T24Tournaments.load_tournaments_draws_id()
         return trn_data
 
     @staticmethod
@@ -182,58 +168,39 @@ class T24Matches(Tennis24):
                 match_data[field] = int(match_data[field])
         return match_data
 
-    async def __get_and_put_all_new_players_from_matches(self, matches):
-        for match in matches:
-            if match['t1_pl1_id'] and match['t1_pl1_id'] not in self.all_players:
-                self.__new_players.add(match['t1_pl1_id'])
-            if match['t1_pl2_id'] and match['t1_pl2_id'] not in self.all_players:
-                self.__new_players.add(match['t1_pl2_id'])
-            if match['t2_pl1_id'] and match['t2_pl1_id'] not in self.all_players:
-                self.__new_players.add(match['t2_pl1_id'])
-            if match['t2_pl2_id'] and match['t2_pl2_id'] not in self.all_players:
-                self.__new_players.add(match['t2_pl2_id'])
-        new_players = [{'t24_pl_id': np} for np in self.__new_players]
-        await self._dbo.insert_or_update_many('public', 't24_players', new_players, ['t24_pl_id'], on_conflict_update=False)
-        self.all_players.update(self.__new_players)
-        self.__new_players = set()
-
-    async def load_daily_matches(self):
-        await self._dbo.init_pool()
-        await self._dbo.close_pg_connections()
-        await self.__load_all_trn_years()
-        self.T24Tournaments = T24Tournaments()
-        await self.T24Tournaments.init_async()
-        self.T24Players = T24Players()
-        await self.T24Players.init_async()
-        matches = []
+    async def get_daily_match_pages(self):
+        daily_match_pages = []
         for day_number in range(-1, 7):
             print('####### Day number:', str(day_number) + ', Date:', date.today() + timedelta(days=day_number))
             url = f'https://global.flashscore.ninja/107/x/feed/f_2_{day_number}_4_en_1'
-            match_page = await super()._get_html_async(url, need_soup=False)
+            daily_match_pages += [await super()._get_html_async(url, need_soup=False)]
+        self.__daily_match_pages = daily_match_pages
+
+    async def get_new_tournaments_and_years(self, all_tournament_draw_ids: dict) -> list[dict]:
+        new_tournaments = list()
+        url_set = set()
+        for match_page in self.__daily_match_pages:
+            for line in match_page.split('¬~'):
+                if line[:3] == 'ZA÷':
+                    tournament = await self.__tournament_line_parsing(line, all_tournament_draw_ids)
+                    if tournament['trn_year_id'] is None:
+                        if tournament['trn_archive_full_url'] not in url_set:
+                            url_set.add(tournament['trn_archive_full_url'])
+                            new_tournaments.append(tournament)
+        return new_tournaments
+
+    async def get_daily_matches(self, all_tournament_draw_ids: dict) -> list[dict]:
+        matches = list()
+        for match_page in self.__daily_match_pages:
             current_tournament = {}
             for line in match_page.split('¬~'):
                 if line[:3] == 'ZA÷':
-                    current_tournament = await self.__tournament_line_parsing(line)
+                    current_tournament = await self.__tournament_line_parsing(line, all_tournament_draw_ids)
                 elif line[:2] == 'AA':
                     match_data = self.__match_line_parsing(line)
                     match_data.update({'trn_year_id': current_tournament.get('trn_year_id'),
                                        'is_qualification': current_tournament.get('is_qualification')})
                     matches.append(match_data)
-        await self.__get_and_put_all_new_players_from_matches(matches)
-        await self.T24Players.load_players_data()
-        await self._dbo.insert_or_update_many('public', 't24_matches', matches, ['t24_match_id'])
-        await self._dbo.close_pool()
+        return matches
 
 
-def t24_load_daily_matches():
-    t24 = T24Matches()
-    asyncio.run(t24.load_daily_matches())
-
-
-if __name__ == '__main__':
-    start_time = datetime.now()
-    t24_load_daily_matches()
-    # t24_load_initial_match_data()
-    # t24_load_final_match_data()
-
-    print('Time length:', datetime.now() - start_time)

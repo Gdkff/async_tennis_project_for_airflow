@@ -256,7 +256,9 @@ class T24DailyMatchesLoading(Tennis24):
         await self._dbo.init_pool()
         await self._dbo.close_pg_connections()
         await self.__load_all_players_from_db()
-        matches = await self._dbo.t24_get_matches_without_initial_load()
+        matches = await self._dbo.select('public', 't24_matches', ['t24_match_id', 'match_url', 't1_pl1_name',
+                                                                   't1_pl2_name', 't2_pl1_name', 't2_pl2_name'],
+                                         where_conditions={'initial_players_data_loaded': None})
         print(f'{len(matches)} not initial matches loaded from db')
         tasks = [self.__get_initial_match_data_by_t24_match_id(match) for match in matches]
         matches_update = await asyncio.gather(*tasks)
@@ -402,8 +404,9 @@ class T24DailyMatchesLoading(Tennis24):
     async def load_final_match_data(self):
         await self._dbo.init_pool()
         await self._dbo.close_pg_connections()
-        matches_not_loaded_pbp = [match['t24_match_id']
-                                  for match in await self._dbo.t24_get_ended_matches_non_loaded_pbp()]
+        matches_not_loaded_pbp = await self._dbo.select('public', 't24_matches', ['t24_match_id'],
+                                                        {'match_status_short_code': 3, 'final_pbp_data_loaded': None})
+        matches_not_loaded_pbp = [match['t24_match_id'] for match in matches_not_loaded_pbp]
         print(f'{len(matches_not_loaded_pbp)} ended matches without PbP loaded')
         tasks = [self.__get_pbp_match_data(t24_match_id) for t24_match_id in matches_not_loaded_pbp]
         pbp_matches = await asyncio.gather(*tasks)
@@ -417,8 +420,9 @@ class T24DailyMatchesLoading(Tennis24):
         await self._dbo.insert_or_update_many('public', 't24_matches', update_matches_pbp,
                                               ['t24_match_id'])
         print('PbP data uploaded to db')
-        matches_not_loaded_statistics = [match['t24_match_id']
-                                         for match in await self._dbo.t24_get_ended_matches_non_loaded_statistics()]
+        matches_not_loaded_statistics = await self._dbo.select('public', 't24_matches', ['t24_match_id'],
+                                                        {'match_status_short_code': 3, 'final_statistics_loaded': None})
+        matches_not_loaded_statistics = [match['t24_match_id'] for match in matches_not_loaded_statistics]
         print(f'{len(matches_not_loaded_statistics)} ended matches without statistics loaded')
         tasks = [self.__get_match_statistic_by_match_id(t24_match_id) for t24_match_id in matches_not_loaded_statistics]
         sets_statistic = await asyncio.gather(*tasks)

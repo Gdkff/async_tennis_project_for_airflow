@@ -1,3 +1,5 @@
+import asyncpg
+
 from dags_modules.t24_init import Tennis24, asyncio
 from datetime import datetime, date, timedelta, timezone
 from settings.config import tz
@@ -6,18 +8,28 @@ import json
 
 
 class T24Players(Tennis24):
-    def __init__(self):
+    def __init__(self, pool: asyncpg.pool.Pool):
         super().__init__()
-        self.all_players = {}
+        self.__pool = pool
+        self.__all_players = set()
         self.t24_trn = None
 
-    async def init_async(self):
-        await self._dbo.init_pool()
-        await self.__get_db_players()
+    async def get_db_all_players(self):
+        players = await self._dbo.select(self.__pool, 'public', 't24_players', ['t24_pl_id'])
+        self.__all_players = {trn['t24_pl_id'] for trn in players}
 
-    async def __get_db_players(self):
-        players = await self._dbo.select('public', 't24_players', ['t24_pl_id'])
-        self.all_players = {trn['t24_pl_id'] for trn in players}
+    async def get_all_new_players_from_matches(self, matches: list[dict]) -> set:
+        new_players = set()
+        for match in matches:
+            if match['t1_pl1_id'] and match['t1_pl1_id'] not in self.__all_players:
+                new_players.add(match['t1_pl1_id'])
+            if match['t1_pl2_id'] and match['t1_pl2_id'] not in self.__all_players:
+                new_players.add(match['t1_pl2_id'])
+            if match['t2_pl1_id'] and match['t2_pl1_id'] not in self.__all_players:
+                new_players.add(match['t2_pl1_id'])
+            if match['t2_pl2_id'] and match['t2_pl2_id'] not in self.__all_players:
+                new_players.add(match['t2_pl2_id'])
+        return new_players
 
     async def __get_t24_pl_full_data(self, t24_pl_id: str) -> dict:
         url = await self._get_url_redirect_endpoint(f'https://www.tennis24.com/?r=4:{t24_pl_id}')
@@ -44,30 +56,20 @@ class T24Players(Tennis24):
                        'country': country,
                        'birthday': birthday,
                        'all_data_loaded': True}
-        print(player_data)
         return player_data
 
-    async def load_players_data(self):
-        await self._dbo.init_pool()
-        await self._dbo.close_pg_connections()
-        player_ids_to_load_data = await self._dbo.select('public', 't24_players',
-                                                         ['t24_pl_id'], {'all_data_loaded': None})
-        player_ids_to_load_data = [pl_id['t24_pl_id'] for pl_id in player_ids_to_load_data]
+    async def load_players_data_to_db(self, player_ids_to_load_data: list[str]) -> list[dict]:
         batch_size = self._concurrency
         batches = [player_ids_to_load_data[i:i + batch_size] for i in range(0, len(player_ids_to_load_data), batch_size)]
         batches_count = len(batches)
+        players_data_to_db = []
         for batch in batches:
             in_time = datetime.now()
             tasks = [self.__get_t24_pl_full_data(pl_id) for pl_id in batch]
-            players = await asyncio.gather(*tasks)
-            # players = [pl for inner in players if inner for pl in inner if pl]
-            # print(players)
-            await self._dbo.insert_or_update_many('public', 't24_players', players, ['t24_pl_id'], on_conflict_update=True)
+            players_data_to_db += await asyncio.gather(*tasks)
             batches_count -= 1
             print(f'Batch processing time: {datetime.now() - in_time}. {batches_count} batches left to process.')
+        return players_data_to_db
 
 
-if __name__ == '__main__':
-    t24 = T24Players()
-    asyncio.run(t24.load_players_data())
-    # asyncio.run(t24.get_t24_pl_full_data('CzXh4LAb'))
+
