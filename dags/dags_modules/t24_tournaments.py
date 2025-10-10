@@ -60,7 +60,7 @@ class T24Tournaments(Tennis24):
                          'trn_name': line_dict['MU']
                          })
                     self.__last_tournament_id = current_tournament_id
-                    self.__all_tournament_urls.add(trn_archive_full_url)
+                    self.__all_tournament_urls.update({trn_archive_full_url: current_tournament_id})
         return tournaments_out
 
     async def __get_tournament_years(self, tournament_data: dict) -> dict | None:
