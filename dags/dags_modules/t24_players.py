@@ -14,7 +14,10 @@ class T24Players(Tennis24):
         self.__all_players = set()
         self.t24_trn = None
 
-    async def get_db_all_players(self):
+    async def init_async(self):
+        await self.__get_db_all_players()
+
+    async def __get_db_all_players(self):
         players = await self._dbo.select(self.__pool, 'public', 't24_players', ['t24_pl_id'])
         self.__all_players = {trn['t24_pl_id'] for trn in players}
 

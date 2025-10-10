@@ -16,6 +16,7 @@ class T24:
         self.T24Tournaments = t24_tournaments.T24Tournaments(self.__pool)
         await self.T24Tournaments.init_async()
         self.T24Players = t24_players.T24Players(self.__pool)
+        await self.T24Players.init_async()
         self.T24Matches = t24_matches.T24Matches(self.__pool)
 
     async def load_daily_matches(self):
