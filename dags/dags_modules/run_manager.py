@@ -28,6 +28,7 @@ class T24:
         new_trn_years = await self.T24Matches.get_new_tournaments_and_years(self.T24Tournaments.all_trn_year_draw_ids)
         print('Загружаем в базу новые года турниров и если нужно сами')
         await self.T24Tournaments.t24_load_tournaments_and_years(new_trn_years)
+        await self.T24Tournaments.init_async()
         print('Загружаем все матчи со вчера и на 7 дней вперед')
         matches = await self.T24Matches.get_daily_matches(self.T24Tournaments.all_trn_year_draw_ids)
         print('Выделяем новых игроков из матчей')

@@ -29,7 +29,7 @@ class T24Tournaments(Tennis24):
     async def __get_all_db_tournaments_years(self):
         tournaments_years = await self._dbo.select(self.__pool, 'public', 't24_tournaments_years', ['id', 'trn_id', 'trn_year', 'first_draw_id'])
         self.__all_tournament_years = {(ty['trn_id'], ty['trn_year']): ty['id'] for ty in tournaments_years}
-        self.__tournament_years_with_draw_id = {(ty['trn_id'], ty['trn_year']): ty['id'] for ty in tournaments_years if ty['first_draw_id'] is not None}
+        self.tournament_years_with_draw_id = {(ty['trn_id'], ty['trn_year']): ty['id'] for ty in tournaments_years if ty['first_draw_id'] is not None}
         self.all_trn_year_draw_ids = {t['first_draw_id']: t['id'] for t in tournaments_years if t['first_draw_id']}
         if tournaments_years:
             self.__last_tournaments_years_id = max(tournaments_years, key=lambda x: x['id'])['id']
@@ -193,12 +193,6 @@ class T24Tournaments(Tennis24):
 
     async def t24_load_tournaments_and_years(self, tournaments_to_load: list[dict] | None = None):
         await self.init_async()
-        await self.load_tournaments(tournaments_to_load)
+        await self.load_tournaments(tournaments_to_load, on_conflict_update=True)
         await self.load_tournaments_years()
         await self.load_tournaments_draws_id()
-
-
-if __name__ == '__main__':
-    t24 = T24Tournaments()
-    asyncio.run(t24.t24_load_tournaments_and_years())
-
