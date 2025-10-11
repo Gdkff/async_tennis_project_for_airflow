@@ -8,7 +8,7 @@ import urllib.request as ulr
 from bs4 import BeautifulSoup
 
 from dags_modules.dbo import DBOperator as dbo
-from dags_modules.t24_match_pbp_parser import T24matchPBPparser
+# from dags_modules.t24_match_pbp_parser import T24matchPBPparser
 
 
 class Tennis24:

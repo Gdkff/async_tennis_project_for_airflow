@@ -40,6 +40,7 @@ class T24Tournaments(Tennis24):
         tournaments_split = (await tournaments_raw).split('¬~')
         trn_type = None
         for line in tournaments_split:
+            print(line)
             if line.strip() == '':
                 continue
             line_split = line.split('¬')

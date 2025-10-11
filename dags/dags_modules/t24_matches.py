@@ -170,7 +170,7 @@ class T24Matches(Tennis24):
 
     async def get_daily_match_pages(self):
         daily_match_pages = []
-        for day_number in range(-1, 7):
+        for day_number in range(-7, 8):
             print('####### Day number:', str(day_number) + ', Date:', date.today() + timedelta(days=day_number))
             url = f'https://global.flashscore.ninja/107/x/feed/f_2_{day_number}_4_en_1'
             daily_match_pages += [await super()._get_html_async(url, need_soup=False)]
@@ -189,8 +189,9 @@ class T24Matches(Tennis24):
                             new_tournaments.append(tournament)
         return new_tournaments
 
-    async def get_daily_matches(self, all_tournament_draw_ids: dict) -> list[dict]:
-        matches = list()
+    async def get_daily_matches(self, all_tournament_draw_ids: dict) -> tuple[list[dict], list[dict]]:
+        correct_matches = list()
+        defective_matches = list()
         for match_page in self.__daily_match_pages:
             current_tournament = {}
             for line in match_page.split('¬~'):
@@ -200,7 +201,10 @@ class T24Matches(Tennis24):
                     match_data = self.__match_line_parsing(line)
                     match_data.update({'trn_year_id': current_tournament.get('trn_year_id'),
                                        'is_qualification': current_tournament.get('is_qualification')})
-                    matches.append(match_data)
-        return matches
+                    if match_data['trn_year_id'] is not None:
+                        correct_matches.append(match_data)
+                    else:
+                        defective_matches.append(match_data)
+        return correct_matches, defective_matches
 
 
