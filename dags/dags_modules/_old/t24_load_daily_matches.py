@@ -273,7 +273,7 @@ class T24DailyMatchesLoading(Tennis24):
         pbp_match_data = self._bpb_parser.parse_t24_pbp_string(bpb_match_string, t24_match_id)
         return pbp_match_data
 
-    async def __put_pbp_games_to_db(self, pbp_games: [dict]):
+    async def __put_pbp_games_to_db(self, pbp_games: list[dict]):
         all_dim_pbp_game_lines = await self._dbo.select('public', 'dim_game_pbp', ['server_points_line'])
         all_dim_pbp_game_lines = [x['server_points_line'] for x in all_dim_pbp_game_lines]
         new_dim_pbp_game_lines_to_db = []

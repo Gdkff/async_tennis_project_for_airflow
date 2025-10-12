@@ -1,16 +1,14 @@
-import asyncpg
-
+from dags_modules.dbo import DBOperator
 from dags_modules.t24_init import Tennis24, asyncio
-from datetime import datetime, date, timedelta, timezone
-from settings.config import tz
+from datetime import datetime, timezone
 import re
-import json
 
 
 class T24Players(Tennis24):
-    def __init__(self, pool: asyncpg.pool.Pool):
+    def __init__(self, dbo: DBOperator):
         super().__init__()
-        self.__pool = pool
+        self.__dbo = dbo
+        self.__pool = self.__dbo.pool
         self.__all_players = set()
         self.t24_trn = None
 
@@ -18,12 +16,12 @@ class T24Players(Tennis24):
         await self.__get_db_all_players()
 
     async def __get_db_all_players(self):
-        players = await self._dbo.select(self.__pool, 'public', 't24_players', ['t24_pl_id'])
+        players = await self.__dbo.select('public', 't24_players', ['t24_pl_id'])
         self.__all_players = {trn['t24_pl_id'] for trn in players}
 
-    async def get_all_new_players_from_matches(self, matches: list[dict]) -> set:
+    async def get_all_new_players_from_matches(self, correct_matches: list[dict], defective_matches: list[dict]) -> set:
         new_players = set()
-        for match in matches:
+        for match in correct_matches + defective_matches:
             if match['t1_pl1_id'] and match['t1_pl1_id'] not in self.__all_players:
                 new_players.add(match['t1_pl1_id'])
             if match['t1_pl2_id'] and match['t1_pl2_id'] not in self.__all_players:
