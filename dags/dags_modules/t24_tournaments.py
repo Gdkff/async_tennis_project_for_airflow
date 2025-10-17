@@ -150,13 +150,16 @@ class T24Tournaments(Tennis24):
             for trn in tournaments_with_years:
                 for year in trn['years']:
                     if (trn['id'], year) not in self.__tournament_years_with_draw_id:
-                        trn_year_id = self.__last_tournaments_years_id + 1 if (trn['id'], year) not in self.__all_tournament_years else self.__all_tournament_years[(trn['id'], year)]
+                        if (trn['id'], year) not in self.__all_tournament_years:
+                            self.__last_tournaments_years_id += 1
+                            trn_year_id = self.__last_tournaments_years_id
+                        else:
+                            trn_year_id = self.__all_tournament_years[(trn['id'], year)]
                         trn_years_data_to_db.append({'id': trn_year_id,
                                                      'trn_id': trn['id'],
                                                      'trn_year': year,
                                                      'draws_id_loaded': None
                                                      })
-                        self.__last_tournaments_years_id += 1
                         # print('current_tournaments_years_id =', self.__last_tournaments_years_id)
                         self.__all_tournament_years.update({(trn['id'], year): self.__last_tournaments_years_id})
             await self.__dbo.insert_or_update_many('public', 't24_tournaments_years', trn_years_data_to_db,
