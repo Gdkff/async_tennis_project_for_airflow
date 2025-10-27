@@ -211,6 +211,8 @@ class T24Matches(Tennis24):
     async def pbp_get_match_data(self, t24_match_id):
         url = f'https://global.flashscore.ninja/107/x/feed/df_mh_2_{t24_match_id}'
         bpb_match_string = await self._get_html_async(url, need_soup=False)
+        if not bpb_match_string:
+            return None
         pbp_match_data = self.pbp_parse_t24_string(bpb_match_string, t24_match_id)
         return pbp_match_data
 
@@ -295,7 +297,8 @@ class T24Matches(Tennis24):
                     t1_bp.append((set_num, game_num, point_num))
                     receiver_breakpoints += 1
             points.append((int(game_points[0].replace('A', '50')),
-                           int(game_points[1].replace(' |B1|', '').replace(' |B2|', '').replace(' |B3|', '').replace('A', '50').strip())))
+                           int(game_points[1].replace(' |B1|', '').replace(' |B2|', '').replace(' |B3|', '').replace(
+                               'A', '50').strip())))
             # print(f'*{point}*')
             point_num += 1
         server_points_list = self.__pbp_parse_game_points(points, server, winner)
@@ -321,7 +324,6 @@ class T24Matches(Tennis24):
         return game_pbp_data
 
     def pbp_parse_t24_string(self, t24_pbp: str, t24_match_id: str):
-        print(t24_match_id)
         pbp_split = t24_pbp.split('¬~')
         game_num = 1
         t1_bp = []
@@ -372,11 +374,11 @@ class T24Matches(Tennis24):
         return match_pbp_data_out
 
     async def pbp_put_games_to_db(self, pbp_games: list[dict]):
-        all_dim_pbp_game_lines = await self.__dbo.select('public', 'dim_game_pbp', ['id', 'server_points_line'])
-        all_dim_pbp_game_lines = {x['server_points_line']: x['id'] for x in all_dim_pbp_game_lines}
+        all_dim_pbp_game_lines = await self.__dbo.select('public', 'dim_game_pbp', ['server_points_line'])
+        all_dim_pbp_game_lines = {x['server_points_line'] for x in all_dim_pbp_game_lines}
         new_dim_pbp_game_lines_to_db = []
-        all_dim_pbp_tiebreak_lines = await self.__dbo.select('public', 'dim_tiebreak_pbp', ['id', 'server_points_line'])
-        all_dim_pbp_tiebreak_lines = {x['server_points_line']: x['id'] for x in all_dim_pbp_tiebreak_lines}
+        all_dim_pbp_tiebreak_lines = await self.__dbo.select('public', 'dim_tiebreak_pbp', ['server_points_line'])
+        all_dim_pbp_tiebreak_lines = {x['server_points_line'] for x in all_dim_pbp_tiebreak_lines}
         new_dim_pbp_tiebreak_lines_to_db = []
         pbp_games_to_db = []
         for g in pbp_games:
@@ -390,7 +392,8 @@ class T24Matches(Tennis24):
                     'receiver_breakpoints': g['receiver_breakpoints'],
                     'receiver_breakpoints_converted': g['receiver_breakpoints_converted']
                 })
-                all_dim_pbp_game_lines.update({g['server_game_points_line']: 100})
+                print()
+                all_dim_pbp_game_lines.add(g['server_game_points_line'])
             if g['game'] == 13 and g['server_game_points_line'] not in all_dim_pbp_tiebreak_lines:
                 new_dim_pbp_tiebreak_lines_to_db.append({
                     'server_points_line': g['server_game_points_line'],
@@ -403,7 +406,7 @@ class T24Matches(Tennis24):
                     'second_server_points_on_serve_won': g['second_server_points_on_serve_won'],
                     'second_server_points_on_receive_won': g['second_server_points_on_receive_won']
                 })
-                all_dim_pbp_tiebreak_lines.update({g['server_game_points_line']: 100})
+                all_dim_pbp_tiebreak_lines.add(g['server_game_points_line'])
             pbp_games_to_db.append(
                 {'t24_match_id': g['t24_match_id'],
                  'set': g['set'],
@@ -412,12 +415,13 @@ class T24Matches(Tennis24):
                  'server_game_points_line': g['server_game_points_line'] if g['game'] < 13 else None,
                  'server_tiebreak_points_line': g['server_game_points_line'] if g['game'] == 13 else None
                  })
+        print(new_dim_pbp_game_lines_to_db)
         await self.__dbo.insert_or_update_many('public', 'dim_game_pbp', new_dim_pbp_game_lines_to_db,
-                                              ['server_points_line'])
+                                               ['server_points_line'])
         await self.__dbo.insert_or_update_many('public', 'dim_tiebreak_pbp', new_dim_pbp_tiebreak_lines_to_db,
-                                              ['server_points_line'])
+                                               ['server_points_line'])
         await self.__dbo.insert_or_update_many('public', 't24_game_pbp', pbp_games_to_db,
-                                              ['t24_match_id', 'set', 'game'])
+                                               ['t24_match_id', 'set', 'game'])
 
     async def t24_get_match_statistic(self, t24_match_id: str) -> list:
         url = f'https://global.flashscore.ninja/107/x/feed/df_st_2_{t24_match_id}'

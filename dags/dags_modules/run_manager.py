@@ -55,27 +55,28 @@ class T24:
     async def load_final_match_data(self):
         await self.__async_init_classes()
         # Загружаем из базы id матчей с незагруженными pbp
-        matches_not_loaded_pbp = await self.DBO.select('public', 't24_matches', ['t24_match_id'],
+        matches_not_loaded_pbp = await self.DBO.select('public', 't24_matches', ['t24_match_id', 'trn_year_id'],
                                                        {'match_status_short_code': 3, 'final_pbp_data_loaded': None})
-        matches_not_loaded_pbp = [match['t24_match_id'] for match in matches_not_loaded_pbp]
+        matches_not_loaded_pbp = {match['t24_match_id']: match['trn_year_id'] for match in matches_not_loaded_pbp}
         print(f'{len(matches_not_loaded_pbp)} ended matches without PbP loaded')
-        tasks = [self.T24Matches.pbp_get_match_data(t24_match_id) for t24_match_id in matches_not_loaded_pbp[:10]]
+        tasks = [self.T24Matches.pbp_get_match_data(t24_match_id) for t24_match_id in matches_not_loaded_pbp.keys()]
         pbp_matches = await asyncio.gather(*tasks)
         pbp_games = [pbp_game for match in pbp_matches if match for pbp_game in match if pbp_game]
         print('PbP data downloaded')
         await self.T24Matches.pbp_put_games_to_db(pbp_games)
         matches_loaded_pbp = {x['t24_match_id'] for x in pbp_games}
-        update_matches_pbp = [{'t24_match_id': t24_match_id,
+        update_matches_pbp = [{'t24_match_id': t24_match_id, 'trn_year_id': trn_year_id,
                                'final_pbp_data_loaded': True if t24_match_id in matches_loaded_pbp else False}
-                              for t24_match_id in matches_not_loaded_pbp]
+                              for t24_match_id, trn_year_id in matches_not_loaded_pbp.items()]
+        print(update_matches_pbp)
         await self.DBO.insert_or_update_many('public', 't24_matches', update_matches_pbp,
-                                             ['t24_match_id'])
+                                             ['t24_match_id'], on_conflict_update=True)
         print('PbP data uploaded to db')
-        matches_not_loaded_statistics = await self.DBO.select('public', 't24_matches', ['t24_match_id'],
-                                                              {'match_status_short_code': 3,
-                                                               'final_statistics_loaded': None})
-        matches_not_loaded_statistics = [match['t24_match_id'] for match in matches_not_loaded_statistics]
-        print(f'{len(matches_not_loaded_statistics)} ended matches without statistics loaded')
+        # matches_not_loaded_statistics = await self.DBO.select('public', 't24_matches', ['t24_match_id'],
+        #                                                       {'match_status_short_code': 3,
+        #                                                        'final_statistics_loaded': None})
+        # matches_not_loaded_statistics = [match['t24_match_id'] for match in matches_not_loaded_statistics]
+        # print(f'{len(matches_not_loaded_statistics)} ended matches without statistics loaded')
         # tasks = [self.T24Matches.get_match_statistic_by_match_id(t24_match_id) for t24_match_id in matches_not_loaded_statistics]
         # sets_statistic = await asyncio.gather(*tasks)
         # sets_statistic = [set_stat for inner in sets_statistic if inner for set_stat in inner if set_stat]
@@ -95,7 +96,7 @@ class T24:
 def t24_load_daily_matches():
     t24 = T24()
     asyncio.run(t24.load_daily_matches())
-    # asyncio.run(t24.load_final_match_data())
+    asyncio.run(t24.load_final_match_data())
 
 
 if __name__ == '__main__':
