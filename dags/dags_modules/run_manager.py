@@ -72,24 +72,24 @@ class T24:
         await self.DBO.insert_or_update_many('public', 't24_matches', update_matches_pbp,
                                              ['t24_match_id'], on_conflict_update=True)
         print('PbP data uploaded to db')
-        # matches_not_loaded_statistics = await self.DBO.select('public', 't24_matches', ['t24_match_id'],
-        #                                                       {'match_status_short_code': 3,
-        #                                                        'final_statistics_loaded': None})
-        # matches_not_loaded_statistics = [match['t24_match_id'] for match in matches_not_loaded_statistics]
-        # print(f'{len(matches_not_loaded_statistics)} ended matches without statistics loaded')
-        # tasks = [self.T24Matches.get_match_statistic_by_match_id(t24_match_id) for t24_match_id in matches_not_loaded_statistics]
-        # sets_statistic = await asyncio.gather(*tasks)
-        # sets_statistic = [set_stat for inner in sets_statistic if inner for set_stat in inner if set_stat]
-        # print('Statistics data downloaded')
-        # await self.DBO.insert_or_update_many('public', 't24_set_statistics', sets_statistic,
-        #                                      ['t24_match_id', 'team_num', 'set'])
-        # matches_loaded_statistics = {x['t24_match_id'] for x in sets_statistic}
-        # update_matches_stat = [{'t24_match_id': t24_match_id,
-        #                         'final_statistics_loaded': True if t24_match_id in matches_loaded_statistics else False}
-        #                        for t24_match_id in matches_not_loaded_statistics]
-        # await self.DBO.insert_or_update_many('public', 't24_matches', update_matches_stat,
-        #                                       ['t24_match_id'])
-        # print('Statistics data uploaded to db')
+        matches_not_loaded_statistics = await self.DBO.select('public', 't24_matches', ['t24_match_id', 'trn_year_id'],
+                                                              {'match_status_short_code': 3,
+                                                               'final_statistics_loaded': None})
+        matches_not_loaded_statistics = {match['t24_match_id']: match['trn_year_id'] for match in matches_not_loaded_statistics}
+        print(f'{len(matches_not_loaded_statistics)} ended matches without statistics loaded')
+        tasks = [self.T24Matches.get_match_statistic_by_match_id(t24_match_id) for t24_match_id in matches_not_loaded_statistics]
+        sets_statistic = await asyncio.gather(*tasks)
+        sets_statistic = [set_stat for inner in sets_statistic if inner for set_stat in inner if set_stat]
+        print('Statistics data downloaded')
+        await self.DBO.insert_or_update_many('public', 't24_set_statistics', sets_statistic,
+                                             ['t24_match_id', 'team_num', 'set'])
+        matches_loaded_statistics = {x['t24_match_id'] for x in sets_statistic}
+        update_matches_stat = [{'t24_match_id': t24_match_id, 'trn_year_id': trn_year_id,
+                                'final_statistics_loaded': True if t24_match_id in matches_loaded_statistics else False}
+                               for t24_match_id, trn_year_id in matches_not_loaded_statistics.items()]
+        await self.DBO.insert_or_update_many('public', 't24_matches', update_matches_stat,
+                                              ['t24_match_id'])
+        print('Statistics data uploaded to db')
         await self.DBO.close_pool()
 
 

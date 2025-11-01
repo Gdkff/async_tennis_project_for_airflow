@@ -17,6 +17,7 @@ class Tennis24:
                 return response.read().decode('utf-8')
 
         async with self._semaphore:
+            print(page_url)
             counter = 0
             html = None
             while True:

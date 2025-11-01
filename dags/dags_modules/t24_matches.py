@@ -423,9 +423,11 @@ class T24Matches(Tennis24):
         await self.__dbo.insert_or_update_many('public', 't24_game_pbp', pbp_games_to_db,
                                                ['t24_match_id', 'set', 'game'])
 
-    async def t24_get_match_statistic(self, t24_match_id: str) -> list:
+    async def get_match_statistic_by_match_id(self, t24_match_id: str) -> list:
         url = f'https://global.flashscore.ninja/107/x/feed/df_st_2_{t24_match_id}'
         data = await super()._get_html_async(url, need_soup=False)
+        if not data:
+            return []
         stats_keys_dict = {'Aces': ('aces',),
                            'Double Faults': ('double_faults',),
                            'Service Points Won': (None, None, 'service_points'),
@@ -486,6 +488,7 @@ class T24Matches(Tennis24):
                         result = {k: v for k, v in zip(db_keys, team_line_vals) if k is not None}
                         statistic[f't{team_num}'].update(result)
             if period != period_last or part[:2] == 'A1':
-                match_statistic.append(statistic['t1'])
-                match_statistic.append(statistic['t2'])
+                if len(statistic['t1'].keys()) > 3 and len(statistic['t2'].keys()) > 3:
+                    match_statistic.append(statistic['t1'])
+                    match_statistic.append(statistic['t2'])
         return match_statistic

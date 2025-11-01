@@ -70,7 +70,7 @@ class DBOperator:
            VALUES ({placeholders})
            ON CONFLICT ({conflict_fields_str}) DO {do_on_conflict}
            """
-        values = [tuple([record[col] for col in columns_insert]) for record in records]
+        values = [tuple([record.get(col) for col in columns_insert]) for record in records]
 
         async with self.pool.acquire() as connection:
             try:
