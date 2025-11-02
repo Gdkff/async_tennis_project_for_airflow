@@ -109,9 +109,7 @@ class DBOperator:
                 condition = conditions_with_null
             condition = ' WHERE ' + condition
             condition_values = list(where_conditions.values())
-            print(condition_values)
         query += condition
-        print(query)
         async with self.pool.acquire() as connection:
             result = await connection.fetch(query, *condition_values)
         return [dict(record) for record in result]

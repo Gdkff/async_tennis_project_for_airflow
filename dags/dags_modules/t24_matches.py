@@ -415,7 +415,6 @@ class T24Matches(Tennis24):
                  'server_game_points_line': g['server_game_points_line'] if g['game'] < 13 else None,
                  'server_tiebreak_points_line': g['server_game_points_line'] if g['game'] == 13 else None
                  })
-        print(new_dim_pbp_game_lines_to_db)
         await self.__dbo.insert_or_update_many('public', 'dim_game_pbp', new_dim_pbp_game_lines_to_db,
                                                ['server_points_line'])
         await self.__dbo.insert_or_update_many('public', 'dim_tiebreak_pbp', new_dim_pbp_tiebreak_lines_to_db,
@@ -445,21 +444,19 @@ class T24Matches(Tennis24):
                            '': None}
         data = data.split('¬~')
         match_statistic = []
-        section, period, key_out, t1_val, t2_val, period_last, statistic = None, None, None, None, None, None, None
+        section, period, key_out, t1_val, t2_val, period_last, = None, None, None, None, None, None
+        statistic = {'t1': {'t24_match_id': t24_match_id,
+                            'team_num': 1,
+                            'set': period},
+                     't2': {'t24_match_id': t24_match_id,
+                            'team_num': 2,
+                            'set': period}}
         for part in data:
             parts_of_part = part.split('¬')
             period_last = period
             if part[:2] == 'SE':
                 period = parts_of_part[0].split('÷')[1]
                 period = 0 if period == 'Match' else int(period.replace('Set ', ''))
-                statistic = {'t1': {'t24_match_id': t24_match_id,
-                                    'team_num': 1,
-                                    'set': period},
-                             't2': {'t24_match_id': t24_match_id,
-                                    'team_num': 2,
-                                    'set': period}}
-            # if part[:2] == 'SF':
-            #     section = parts_of_part[0].split('÷')[1]
             if part[:2] == 'SG':
                 for part_of_part in parts_of_part:
                     key, value = part_of_part.split('÷')
@@ -491,4 +488,19 @@ class T24Matches(Tennis24):
                 if len(statistic['t1'].keys()) > 3 and len(statistic['t2'].keys()) > 3:
                     match_statistic.append(statistic['t1'])
                     match_statistic.append(statistic['t2'])
+                if part[:2] != 'A1':
+                    statistic = {'t1': {'t24_match_id': t24_match_id,
+                                        'team_num': 1,
+                                        'set': period},
+                                 't2': {'t24_match_id': t24_match_id,
+                                        'team_num': 2,
+                                        'set': period}}
         return match_statistic
+
+
+if __name__ == '__main__':
+    import dbo
+    import asyncio
+    dbo = dbo.DBOperator()
+    t24 = T24Matches(dbo)
+    asyncio.run(t24.get_match_statistic_by_match_id('6kHSSC8L'))
