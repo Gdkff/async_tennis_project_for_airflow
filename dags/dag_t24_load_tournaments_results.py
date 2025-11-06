@@ -14,15 +14,14 @@ default_args = {
 }
 
 with DAG(
-    dag_id='t24_load_daily_matches',
+    dag_id='t24_load_tournaments_results',
     default_args=default_args,
     description='Test DAG',
-    schedule="*/5 * * * *",
     start_date=datetime(2025, 1, 1),
     catchup=False,
 ) as dag:
 
     task_t24_load_tournaments_results = PythonOperator(
-        task_id="t24_load_daily_matches",
+        task_id="t24_load_tournaments_results",
         python_callable=load_tournaments_results
     )
