@@ -142,7 +142,7 @@ class T24:
 def t24_load_daily_matches():
     t24 = T24()
     asyncio.run(t24.load_daily_matches())
-    asyncio.run(t24.load_final_match_data())
+    # asyncio.run(t24.load_final_match_data())
 
 
 def load_tournaments_results():
