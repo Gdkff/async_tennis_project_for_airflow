@@ -102,7 +102,7 @@ class T24:
         batches = [tournaments[i:i + batch_size] for i in range(0, len(tournaments), batch_size)]
         batches_count = len(batches)
         print(f'Разбили на батчи. Всего {batches_count} батчей')
-        for batch in batches[:1]:
+        for batch in batches:
             in_time = datetime.now()
             trn_years_ids_all = {x['id'] for x in batch}
             tasks = [self.T24Tournaments.get_tournament_match_pages(trn) for trn in batch]
