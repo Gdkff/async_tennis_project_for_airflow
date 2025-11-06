@@ -149,10 +149,10 @@ class DBOperator:
         return [dict(record) for record in result]
 
     async def t24_get_tournaments_years_to_load_results(self):
-        select_query = f""" SELECT ty.id, t.t24_trn_type, t.t24_trn_name, ty.t24_trn_year
+        select_query = f""" SELECT ty.id, t.trn_type, t.trn_name, ty.trn_year
                             FROM public.t24_tournaments t
-                            JOIN public.t24_tournaments_years ty ON t.id = ty.t24_trn_id 
-                            WHERE ty.t24_results_loaded is null
+                            JOIN public.t24_tournaments_years ty ON t.id = ty.trn_id 
+                            WHERE ty.trn_results_loaded is null
                             ORDER BY 1
                          """
         async with self.pool.acquire() as connection:

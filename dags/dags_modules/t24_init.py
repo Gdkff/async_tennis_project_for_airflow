@@ -7,8 +7,8 @@ from bs4 import BeautifulSoup
 
 class Tennis24:
     def __init__(self):
-        self._concurrency = 50
-        self._semaphore = asyncio.Semaphore(self._concurrency)
+        self.concurrency = 50
+        self._semaphore = asyncio.Semaphore(self.concurrency)
 
     async def _get_html_async(self, page_url: str, need_soup: bool = True) -> BeautifulSoup | str | None:
         def fetch_html(url: str):

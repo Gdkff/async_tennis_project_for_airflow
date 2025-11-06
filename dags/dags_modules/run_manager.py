@@ -31,7 +31,7 @@ class T24:
             await self.T24Tournaments.t24_load_tournaments_and_years(new_trn_years)
             await self.T24Tournaments.init_async()
         print('Загружаем все матчи со вчера и на 7 дней вперед')
-        correct_matches, defective_matches = await self.T24Matches.get_daily_matches(
+        correct_matches, defective_matches = await self.T24Matches.get_matches_from_pages(
             self.T24Tournaments.all_trn_year_draw_ids)
         print('Выделяем новых игроков из матчей')
         new_players = await self.T24Players.get_all_new_players_from_matches(correct_matches, defective_matches)
@@ -92,6 +92,52 @@ class T24:
         print('Statistics data uploaded to db')
         await self.DBO.close_pool()
 
+    async def load_tournaments_results(self):
+        print('Инициализируем пул соединений и загружаем из базы все id игроков')
+        await self.__async_init_classes()
+        await self.__async_init_classes_variables()
+        print('Загружаем турниры с незагруженными результатами')
+        tournaments = await self.DBO.t24_get_tournaments_years_to_load_results()
+        batch_size = self.T24Matches.concurrency
+        batches = [tournaments[i:i + batch_size] for i in range(0, len(tournaments), batch_size)]
+        batches_count = len(batches)
+        print(f'Разбили на батчи. Всего {batches_count} батчей')
+        for batch in batches[:1]:
+            in_time = datetime.now()
+            trn_years_ids_all = {x['id'] for x in batch}
+            tasks = [self.T24Tournaments.get_tournament_match_pages(trn) for trn in batch]
+            tournaments_match_pages = await asyncio.gather(*tasks)
+            tournaments_match_pages = [x for inner in tournaments_match_pages if inner for x in inner if x]
+            correct_matches, defective_matches = await self.T24Matches.get_matches_from_pages(
+                self.T24Tournaments.all_trn_year_draw_ids, tournaments_match_pages)
+            print('Выделяем новых игроков из матчей')
+            new_players = await self.T24Players.get_all_new_players_from_matches(correct_matches, defective_matches)
+            print('Подготавливаем список словарей с новыми игроками для загрузки в базу данных')
+            new_players_to_db = [{'t24_pl_id': pl_id} for pl_id in new_players]
+            print(f'Загружаем в базу id новых {len(new_players_to_db)} игроков')
+            await self.DBO.insert_or_update_many('public', 't24_players', new_players_to_db,
+                                                 ['t24_pl_id'], on_conflict_update=False)
+            print(f'Загружаем {len(correct_matches)} корректных матчей в базу')
+            await self.DBO.insert_or_update_many('public', 't24_matches', correct_matches, ['t24_match_id'])
+            print(f'Загружаем {len(defective_matches)} дефектных матчей в базу')
+            await self.DBO.insert_or_update_many('public', 't24_matches_defective', defective_matches, ['t24_match_id'])
+            print('Загружаем информацию по новым игрокам')
+            new_players_data_to_db = await self.T24Players.load_players_data_to_db([pl_id for pl_id in new_players])
+            print('Загружаем данные по игрокам в базу')
+            await self.DBO.insert_or_update_many('public', 't24_players', new_players_data_to_db, ['t24_pl_id'],
+                                                 on_conflict_update=True)
+            print('Смотрим какие года турниров загрузились, обновляем статус trn_results_loaded в таблице t24_tournaments_years')
+            trn_years_ids_loaded = {x['trn_year_id'] for x in correct_matches + defective_matches}
+            trn_years_ids_loaded = [{'id': trn_year_id,
+                                     'trn_results_loaded': True if trn_year_id in trn_years_ids_loaded else False}
+                                    for trn_year_id in trn_years_ids_all]
+            await self.DBO.insert_or_update_many('public', 't24_tournaments_years', trn_years_ids_loaded, ['id'], on_conflict_update=True)
+            print(f'{len(trn_years_ids_loaded)} t24_tournaments_years.t24_results_loaded updated.')
+            batches_count -= 1
+            print(f'Batch processing time: {datetime.now() - in_time}. {batches_count} batches left to process.')
+            print('Закрываем пул соединений с БД')
+            await self.DBO.close_pool()
+
 
 def t24_load_daily_matches():
     t24 = T24()
@@ -99,9 +145,14 @@ def t24_load_daily_matches():
     asyncio.run(t24.load_final_match_data())
 
 
+def load_tournaments_results():
+    t24 = T24()
+    asyncio.run(t24.load_tournaments_results())
+
+
 if __name__ == '__main__':
     start_time = datetime.now()
-    t24_load_daily_matches()
+    load_tournaments_results()
     # t24_load_initial_match_data()
     # t24_load_final_match_data()
 

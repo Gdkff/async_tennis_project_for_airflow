@@ -1,5 +1,3 @@
-import asyncpg
-
 from dags_modules.dbo import DBOperator
 from dags_modules.t24_init import Tennis24
 from datetime import datetime, date, timedelta
@@ -34,17 +32,20 @@ class T24Matches(Tennis24):
                             new_tournaments.append(tournament)
         return new_tournaments
 
-    async def get_daily_matches(self, all_tournament_draw_ids: dict) -> tuple[list[dict], list[dict]]:
+    async def get_matches_from_pages(self,
+                                     all_tournament_draw_ids: dict,
+                                     match_pages_in: list[tuple] = None) -> tuple[list[dict], list[dict]]:
         correct_matches = list()
         defective_matches = list()
-        for match_page in self.__daily_match_pages:
+        match_pages = match_pages_in if match_pages_in else [(page, None) for page in self.__daily_match_pages]
+        for match_page, trn_year_id in match_pages:
             current_tournament = {}
             for line in match_page.split('¬~'):
                 if line[:3] == 'ZA÷':
                     current_tournament = await self.__tournament_line_parsing(line, all_tournament_draw_ids)
                 elif line[:2] == 'AA':
                     match_data = self.__match_line_parsing(line)
-                    match_data.update({'trn_year_id': current_tournament.get('trn_year_id'),
+                    match_data.update({'trn_year_id': trn_year_id if trn_year_id else current_tournament.get('trn_year_id'),
                                        'is_qualification': current_tournament.get('is_qualification')})
                     if match_data['trn_year_id'] is not None:
                         correct_matches.append(match_data)
@@ -96,37 +97,35 @@ class T24Matches(Tennis24):
 
     def __match_line_parsing(self, match_line):
         split_dict = {'AA': 't24_match_id',
-                      'AD1': 'match_start',
-                      'AO1': 'match_finish',
-                      'AB1': 'match_status_short',
-                      'AC1': 'match_status',
-                      'PX1': 't1_pl1_id',
-                      'PX2': 't1_pl2_id',
-                      'PY1': 't2_pl1_id',
-                      'PY2': 't2_pl2_id',
-                      'AS1': 'team_winner',
-                      'AG1': 't1_sets_won',
-                      'AH1': 't2_sets_won',
-                      'BA1': 't1_s1_score',
-                      'DA1': 't1_s1_score_tiebreak',
-                      'BB1': 't2_s1_score',
-                      'DB1': 't2_s1_score_tiebreak',
-                      'BC1': 't1_s2_score',
-                      'DC1': 't1_s2_score_tiebreak',
-                      'BD1': 't2_s2_score',
-                      'DD1': 't2_s2_score_tiebreak',
-                      'BE1': 't1_s3_score',
-                      'DE1': 't1_s3_score_tiebreak',
-                      'BF1': 't2_s3_score',
-                      'DF1': 't2_s3_score_tiebreak',
-                      'BG1': 't1_s4_score',
-                      'DG1': 't1_s4_score_tiebreak',
-                      'BH1': 't2_s4_score',
-                      'DH1': 't2_s4_score_tiebreak',
-                      'BI1': 't1_s5_score',
-                      'DI1': 't1_s5_score_tiebreak',
-                      'BJ1': 't2_s5_score',
-                      'DJ1': 't2_s5_score_tiebreak'}
+                      'AD': 'match_start',
+                      'AO': 'match_finish',
+                      'AB': 'match_status_short',
+                      'AC': 'match_status',
+                      'PX': 't1_pl1_id',
+                      'PY': 't2_pl1_id',
+                      'AS': 'team_winner',
+                      'AG': 't1_sets_won',
+                      'AH': 't2_sets_won',
+                      'BA': 't1_s1_score',
+                      'DA': 't1_s1_score_tiebreak',
+                      'BB': 't2_s1_score',
+                      'DB': 't2_s1_score_tiebreak',
+                      'BC': 't1_s2_score',
+                      'DC': 't1_s2_score_tiebreak',
+                      'BD': 't2_s2_score',
+                      'DD': 't2_s2_score_tiebreak',
+                      'BE': 't1_s3_score',
+                      'DE': 't1_s3_score_tiebreak',
+                      'BF': 't2_s3_score',
+                      'DF': 't2_s3_score_tiebreak',
+                      'BG': 't1_s4_score',
+                      'DG': 't1_s4_score_tiebreak',
+                      'BH': 't2_s4_score',
+                      'DH': 't2_s4_score_tiebreak',
+                      'BI': 't1_s5_score',
+                      'DI': 't1_s5_score_tiebreak',
+                      'BJ': 't2_s5_score',
+                      'DJ': 't2_s5_score_tiebreak'}
         match_statuses = {'1': 'Not started',
                           '3': 'Finished',
                           '5': 'Cancelled',
@@ -186,7 +185,7 @@ class T24Matches(Tennis24):
                       't1_s5_score_tiebreak': None,
                       't2_s5_score': None,
                       't2_s5_score_tiebreak': None}
-        match_line = self.__add_indexes(match_line)
+        # match_line = self.__add_indexes(match_line)
         for line_part in match_line.split('¬'):
             key, value = line_part.split('÷')
             if key in split_dict:
@@ -194,6 +193,10 @@ class T24Matches(Tennis24):
                     match_data[split_dict[key]] = datetime.fromtimestamp(int(value), tz=tz)
                 else:
                     match_data[split_dict[key]] = value
+        if '/' in match_data['t1_pl1_id']:
+            match_data['t1_pl1_id'], match_data['t1_pl2_id'] = match_data['t1_pl1_id'].split('/')
+        if '/' in match_data['t2_pl1_id']:
+            match_data['t2_pl1_id'], match_data['t2_pl2_id'] = match_data['t2_pl1_id'].split('/')
         match_data.update({
             'match_status_short_code': int(match_data['match_status_short']),
             'match_status_short': match_statuses_short[match_data['match_status_short']],
@@ -501,6 +504,7 @@ class T24Matches(Tennis24):
 if __name__ == '__main__':
     import dbo
     import asyncio
+
     dbo = dbo.DBOperator()
     t24 = T24Matches(dbo)
     asyncio.run(t24.get_match_statistic_by_match_id('6kHSSC8L'))

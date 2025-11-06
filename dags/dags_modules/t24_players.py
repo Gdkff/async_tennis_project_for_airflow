@@ -37,9 +37,11 @@ class T24Players(Tennis24):
         player_soup = await self._get_html_async(url)
         birthday = None
         container__heading = player_soup.find('div', class_='container__heading')
-        country = container__heading.find('span', class_='breadcrumb__text').text
+        country_soup = container__heading.find('span', class_='breadcrumb__text')
+        country = country_soup.text if country_soup else None
         country = country if country != 'World' else None
-        pl_full_name = container__heading.find('div', class_='heading__name').text
+        pl_full_name_soup = container__heading.find('div', class_='heading__name')
+        pl_full_name = pl_full_name_soup.text if pl_full_name_soup else None
         scripts = container__heading.find_all('script')
         for script in scripts:
             script_text = script.text
@@ -50,7 +52,10 @@ class T24Players(Tennis24):
                 if not timestamp_str.isdigit():
                     timestamp_str = re.sub(r"\D", "", timestamp_str)
                 timestamp = int(timestamp_str)
-                birthday = datetime.fromtimestamp(timestamp, tz=timezone.utc).date()
+                try:
+                    birthday = datetime.fromtimestamp(timestamp, tz=timezone.utc).date()
+                except OSError:
+                    birthday = None
         player_data = {'t24_pl_id': t24_pl_id,
                        'url': url,
                        'full_name': pl_full_name,
@@ -60,7 +65,7 @@ class T24Players(Tennis24):
         return player_data
 
     async def load_players_data_to_db(self, player_ids_to_load_data: list[str]) -> list[dict]:
-        batch_size = self._concurrency
+        batch_size = self.concurrency
         batches = [player_ids_to_load_data[i:i + batch_size] for i in range(0, len(player_ids_to_load_data), batch_size)]
         batches_count = len(batches)
         players_data_to_db = []

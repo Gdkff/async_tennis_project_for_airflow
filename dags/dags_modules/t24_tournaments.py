@@ -1,4 +1,5 @@
 from dags_modules.dbo import DBOperator
+from dags_modules.t24_matches import T24Matches
 from dags_modules.t24_init import Tennis24, asyncio
 from datetime import datetime
 import json
@@ -111,6 +112,34 @@ class T24Tournaments(Tennis24):
                 'main_draw_id': main,
                 'draws_id_loaded': True if first and (qual or main) else False}
 
+    async def get_tournament_match_pages(self, trn_in: dict | None) -> [dict]:
+        url = (f'https://www.tennis24.com/'
+               f'{trn_in["trn_type"]}/{trn_in["trn_name"]}-{trn_in["trn_year"]}/results/')
+        # url = 'https://www.tennis24.com/atp-singles/australian-open-2024/results/'
+        # url = 'https://www.tennis24.com/atp-doubles/halle-2024/results/'
+        tournament_soup = await self._get_html_async(url)
+        tournament_html = str(tournament_soup)
+        country_id_start = tournament_html.find('country_id = ') + 13
+        country_id_end = tournament_html.find(';', country_id_start)
+        country_id = tournament_html[country_id_start:country_id_end]
+        tournament_id_start = tournament_html.find('"', country_id_end) + 1
+        tournament_id_end = tournament_html.find('"', tournament_id_start)
+        tournament_id = tournament_html[tournament_id_start:tournament_id_end]
+        season_id_start = tournament_html.find('seasonId: ') + 10
+        season_id_end = tournament_html.find(',', season_id_start)
+        season_id = tournament_html[season_id_start:season_id_end]
+        page_counter = 0
+        match_pages = []
+        while True:
+            url = (f'https://global.flashscore.ninja/107/x/feed/'
+                   f'tr_2_{country_id}_{tournament_id}_{season_id}_{page_counter}_4_en_2')
+            trn_results_page = await self._get_html_async(url, need_soup=False)
+            if not trn_results_page:
+                break
+            match_pages.append((trn_results_page, trn_in['id']))
+            page_counter += 1
+        return match_pages
+
     async def load_tournaments(self, tournaments_to_load: list[dict] | None = None, on_conflict_update: bool | None = None):
         on_conflict_update = on_conflict_update if on_conflict_update else False
         if not tournaments_to_load:
@@ -137,7 +166,7 @@ class T24Tournaments(Tennis24):
 
     async def load_tournaments_years(self):
         tournaments_urls = await self.__dbo.t24_get_tournaments_urls_to_load_years()
-        batch_size = self._concurrency
+        batch_size = self.concurrency
         batches = [tournaments_urls[i:i + batch_size] for i in range(0, len(tournaments_urls), batch_size)]
         batches_count = len(batches)
         for batch in batches:
@@ -178,7 +207,7 @@ class T24Tournaments(Tennis24):
 
     async def load_tournaments_draws_id(self):
         tournaments_years = await self.__dbo.t24_get_tournaments_years_to_load_draw_ids()
-        batch_size = self._concurrency
+        batch_size = self.concurrency
         batches = [tournaments_years[i:i + batch_size] for i in range(0, len(tournaments_years), batch_size)]
         batches_count = len(batches)
         print(f'Batch size: {batch_size}')
