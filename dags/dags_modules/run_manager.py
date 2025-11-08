@@ -57,10 +57,11 @@ class T24:
         # Загружаем из базы id матчей с незагруженными pbp
         matches_not_loaded_pbp = await self.DBO.select('public', 't24_matches', ['t24_match_id', 'trn_year_id'],
                                                        {'match_status_short_code': 3, 'final_pbp_data_loaded': None})
-        matches_not_loaded_pbp = {match['t24_match_id']: match['trn_year_id'] for match in matches_not_loaded_pbp}
-        print(f'{len(matches_not_loaded_pbp)} ended matches without PbP loaded')
+        matches_not_loaded_pbp_dict = {match['t24_match_id']: match['trn_year_id'] for match in matches_not_loaded_pbp}
+        print(f'{len(matches_not_loaded_pbp_dict)} ended matches without PbP loaded')
         batch_size = self.T24Matches.concurrency
-        batches = [matches_not_loaded_pbp[i:i + batch_size] for i in range(0, len(matches_not_loaded_pbp), batch_size)]
+        items = list(matches_not_loaded_pbp_dict.items())
+        batches = [dict(items[i:i + batch_size]) for i in range(0, len(items), batch_size)]
         batches_count = len(batches)
         print(f'Разбили на батчи. Всего {batches_count} батчей')
         for batch in batches:
@@ -73,20 +74,26 @@ class T24:
             matches_loaded_pbp = {x['t24_match_id'] for x in pbp_games}
             update_matches_pbp = [{'t24_match_id': t24_match_id, 'trn_year_id': trn_year_id,
                                    'final_pbp_data_loaded': True if t24_match_id in matches_loaded_pbp else False}
-                                  for t24_match_id, trn_year_id in matches_not_loaded_pbp.items()]
-            print(update_matches_pbp)
+                                  for t24_match_id, trn_year_id in batch.items()]
             await self.DBO.insert_or_update_many('public', 't24_matches', update_matches_pbp,
                                                  ['t24_match_id'], on_conflict_update=True)
-            print('PbP data uploaded to db')
-            matches_not_loaded_statistics = await self.DBO.select('public', 't24_matches',
-                                                                  ['t24_match_id', 'trn_year_id'],
-                                                                  {'match_status_short_code': 3,
-                                                                   'final_statistics_loaded': None})
-            matches_not_loaded_statistics = {match['t24_match_id']: match['trn_year_id']
-                                             for match in matches_not_loaded_statistics}
-            print(f'{len(matches_not_loaded_statistics)} ended matches without statistics loaded')
+            batches_count -= 1
+            print(f'Batch processing time: {datetime.now() - in_time}. {batches_count} batches left to process.')
+        matches_not_loaded_statistics = await self.DBO.select('public', 't24_matches',
+                                                              ['t24_match_id', 'trn_year_id'],
+                                                              {'match_status_short_code': 3,
+                                                               'final_statistics_loaded': None})
+        matches_not_loaded_statistics = {match['t24_match_id']: match['trn_year_id']
+                                         for match in matches_not_loaded_statistics}
+        print(f'{len(matches_not_loaded_statistics)} ended matches without statistics from db loaded')
+        items = list(matches_not_loaded_statistics.items())
+        batches = [dict(items[i:i + batch_size]) for i in range(0, len(items), batch_size)]
+        batches_count = len(batches)
+        print(f'Разбили на батчи. Всего {batches_count} батчей')
+        for batch in batches:
+            in_time = datetime.now()
             tasks = [self.T24Matches.get_match_statistic_by_match_id(t24_match_id)
-                     for t24_match_id in matches_not_loaded_statistics]
+                     for t24_match_id in batch]
             sets_statistic = await asyncio.gather(*tasks)
             sets_statistic = [set_stat for inner in sets_statistic if inner for set_stat in inner if set_stat]
             print('Statistics data downloaded')
@@ -96,7 +103,7 @@ class T24:
             update_matches_stat = [{'t24_match_id': t24_match_id, 'trn_year_id': trn_year_id,
                                     'final_statistics_loaded': True if t24_match_id in matches_loaded_statistics
                                     else False}
-                                   for t24_match_id, trn_year_id in matches_not_loaded_statistics.items()]
+                                   for t24_match_id, trn_year_id in batch.items()]
             await self.DBO.insert_or_update_many('public', 't24_matches', update_matches_stat,
                                                  ['t24_match_id'])
             batches_count -= 1
@@ -155,7 +162,12 @@ class T24:
 
 def t24_load_daily_matches():
     t24 = T24()
-    # asyncio.run(t24.load_daily_matches())
+    asyncio.run(t24.load_daily_matches())
+    # asyncio.run(t24.load_final_match_data())
+
+
+def t24_load_matches_pbp_and_statistics():
+    t24 = T24()
     asyncio.run(t24.load_final_match_data())
 
 
@@ -166,7 +178,7 @@ def t24_load_tournaments_results():
 
 if __name__ == '__main__':
     start_time = datetime.now()
-    # t24_load_daily_matches()
-    t24_load_tournaments_results()
+    t24_load_daily_matches()
+    # t24_load_tournaments_results()
 
     print('Time length:', datetime.now() - start_time)

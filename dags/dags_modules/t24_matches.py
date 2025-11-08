@@ -396,28 +396,27 @@ class T24Matches(Tennis24):
                     'receiver_breakpoints': g['receiver_breakpoints'],
                     'receiver_breakpoints_converted': g['receiver_breakpoints_converted']
                 })
-                print()
                 all_dim_pbp_game_lines.add(g['server_game_points_line'])
             if g['game'] == 13 and g['server_game_points_line'] not in all_dim_pbp_tiebreak_lines:
                 new_dim_pbp_tiebreak_lines_to_db.append({
-                    'server_points_line': g['server_game_points_line'],
-                    'points_total': g['points_total'],
-                    'first_server_win': g['first_server_win'],
-                    'first_server_points_on_serve_line': g['first_server_points_on_serve_str'],
-                    'second_server_points_on_serve_line': g['second_server_points_on_serve_str'],
-                    'first_server_points_on_serve_won': g['first_server_points_on_serve_won'],
-                    'first_server_points_on_receive_won': g['first_server_points_on_receive_won'],
-                    'second_server_points_on_serve_won': g['second_server_points_on_serve_won'],
-                    'second_server_points_on_receive_won': g['second_server_points_on_receive_won']
+                    'server_points_line': g.get('server_game_points_line'),
+                    'points_total': g.get('points_total'),
+                    'first_server_win': g.get('first_server_win'),
+                    'first_server_points_on_serve_line': g.get('first_server_points_on_serve_str'),
+                    'second_server_points_on_serve_line': g.get('second_server_points_on_serve_str'),
+                    'first_server_points_on_serve_won': g.get('first_server_points_on_serve_won'),
+                    'first_server_points_on_receive_won': g.get('first_server_points_on_receive_won'),
+                    'second_server_points_on_serve_won': g.get('second_server_points_on_serve_won'),
+                    'second_server_points_on_receive_won': g.get('second_server_points_on_receive_won')
                 })
                 all_dim_pbp_tiebreak_lines.add(g['server_game_points_line'])
             pbp_games_to_db.append(
-                {'t24_match_id': g['t24_match_id'],
-                 'set': g['set'],
-                 'game': g['game'],
-                 'server': g['server'],
-                 'server_game_points_line': g['server_game_points_line'] if g['game'] < 13 else None,
-                 'server_tiebreak_points_line': g['server_game_points_line'] if g['game'] == 13 else None
+                {'t24_match_id': g.get('t24_match_id'),
+                 'set': g.get('set'),
+                 'game': g.get('game'),
+                 'server': g.get('server'),
+                 'server_game_points_line': g.get('server_game_points_line') if g.get('game') < 13 else None,
+                 'server_tiebreak_points_line': g.get('server_game_points_line') if g.get('game') == 13 else None
                  })
         await self.__dbo.insert_or_update_many('public', 'dim_game_pbp', new_dim_pbp_game_lines_to_db,
                                                ['server_points_line'])
