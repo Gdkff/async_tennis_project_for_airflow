@@ -37,7 +37,7 @@ class Tennis24:
                 if counter > 3:
                     break
         if not html:
-            print('no html:', page_url)
+            # print('no html:', page_url)
             # print(html)
             return None
         if need_soup:

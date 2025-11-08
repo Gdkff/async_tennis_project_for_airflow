@@ -105,7 +105,7 @@ class T24:
         for batch in batches:
             in_time = datetime.now()
             trn_years_ids_all = {x['id'] for x in batch}
-            tasks = [self.T24Tournaments.get_tournament_match_pages(trn) for trn in batch]
+            tasks = [self.T24Tournaments.get_tournament_results_match_pages(trn) for trn in batch]
             tournaments_match_pages = await asyncio.gather(*tasks)
             tournaments_match_pages = [x for inner in tournaments_match_pages if inner for x in inner if x]
             correct_matches, defective_matches = await self.T24Matches.get_matches_from_pages(
@@ -135,8 +135,8 @@ class T24:
             print(f'{len(trn_years_ids_loaded)} t24_tournaments_years.t24_results_loaded updated.')
             batches_count -= 1
             print(f'Batch processing time: {datetime.now() - in_time}. {batches_count} batches left to process.')
-            print('Закрываем пул соединений с БД')
-            await self.DBO.close_pool()
+        print('Закрываем пул соединений с БД')
+        await self.DBO.close_pool()
 
 
 def t24_load_daily_matches():

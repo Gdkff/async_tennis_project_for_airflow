@@ -112,7 +112,7 @@ class T24Tournaments(Tennis24):
                 'main_draw_id': main,
                 'draws_id_loaded': True if first and (qual or main) else False}
 
-    async def get_tournament_match_pages(self, trn_in: dict | None) -> [dict]:
+    async def get_tournament_results_match_pages(self, trn_in: dict | None) -> [dict]:
         url = (f'https://www.tennis24.com/'
                f'{trn_in["trn_type"]}/{trn_in["trn_name"]}-{trn_in["trn_year"]}/results/')
         # url = 'https://www.tennis24.com/atp-singles/australian-open-2024/results/'
