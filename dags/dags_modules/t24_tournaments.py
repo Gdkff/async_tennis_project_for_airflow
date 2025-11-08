@@ -129,6 +129,7 @@ class T24Tournaments(Tennis24):
         season_id_end = tournament_html.find(',', season_id_start)
         season_id = tournament_html[season_id_start:season_id_end]
         page_counter = 0
+        match_pages = []
         while True:
             url = (f'https://global.flashscore.ninja/107/x/feed/'
                    f'tr_2_{country_id}_{tournament_id}_{season_id}_{page_counter}_4_en_2')
