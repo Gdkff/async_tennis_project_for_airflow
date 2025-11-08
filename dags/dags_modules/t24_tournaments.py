@@ -115,9 +115,9 @@ class T24Tournaments(Tennis24):
     async def get_tournament_results_match_pages(self, trn_in: dict | None) -> [dict]:
         url = (f'https://www.tennis24.com/'
                f'{trn_in["trn_type"]}/{trn_in["trn_name"]}-{trn_in["trn_year"]}/results/')
-        # url = 'https://www.tennis24.com/atp-singles/australian-open-2024/results/'
-        # url = 'https://www.tennis24.com/atp-doubles/halle-2024/results/'
         tournament_soup = await self._get_html_async(url)
+        if not tournament_soup:
+            return []
         tournament_html = str(tournament_soup)
         country_id_start = tournament_html.find('country_id = ') + 13
         country_id_end = tournament_html.find(';', country_id_start)
@@ -129,7 +129,6 @@ class T24Tournaments(Tennis24):
         season_id_end = tournament_html.find(',', season_id_start)
         season_id = tournament_html[season_id_start:season_id_end]
         page_counter = 0
-        match_pages = []
         while True:
             url = (f'https://global.flashscore.ninja/107/x/feed/'
                    f'tr_2_{country_id}_{tournament_id}_{season_id}_{page_counter}_4_en_2')

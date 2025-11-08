@@ -1,7 +1,7 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from datetime import datetime, timedelta
-from dags_modules.run_manager import load_tournaments_results
+from dags_modules.run_manager import t24_load_tournaments_results
 
 
 default_args = {
@@ -23,5 +23,5 @@ with DAG(
 
     task_t24_load_tournaments_results = PythonOperator(
         task_id="t24_load_tournaments_results",
-        python_callable=load_tournaments_results
+        python_callable=t24_load_tournaments_results
     )

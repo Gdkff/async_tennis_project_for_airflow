@@ -27,6 +27,7 @@ class Tennis24:
                     break
                 except urllib.error.HTTPError as http_er:
                     if http_er.code == 404:
+                        print('404 Error', page_url)
                         return None
                     else:
                         print(f'!!!!! T24 html loading failed. URL: {page_url}\nError:', http_er)

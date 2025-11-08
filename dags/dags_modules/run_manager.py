@@ -141,19 +141,18 @@ class T24:
 
 def t24_load_daily_matches():
     t24 = T24()
-    asyncio.run(t24.load_daily_matches())
-    # asyncio.run(t24.load_final_match_data())
+    # asyncio.run(t24.load_daily_matches())
+    asyncio.run(t24.load_final_match_data())
 
 
-def load_tournaments_results():
+def t24_load_tournaments_results():
     t24 = T24()
     asyncio.run(t24.load_tournaments_results())
 
 
 if __name__ == '__main__':
     start_time = datetime.now()
-    load_tournaments_results()
-    # t24_load_initial_match_data()
-    # t24_load_final_match_data()
+    # t24_load_daily_matches()
+    t24_load_tournaments_results()
 
     print('Time length:', datetime.now() - start_time)
