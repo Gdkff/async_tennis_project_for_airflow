@@ -6,9 +6,9 @@ import re
 
 
 class T24Matches(Tennis24):
-    def __init__(self, dbo: DBOperator):
+    def __init__(self, dbo_in: DBOperator):
         super().__init__()
-        self.__dbo = dbo
+        self.__dbo = dbo_in
         self.__daily_match_pages = list()
 
     async def get_daily_match_pages(self):
@@ -45,7 +45,8 @@ class T24Matches(Tennis24):
                     current_tournament = await self.__tournament_line_parsing(line, all_tournament_draw_ids)
                 elif line[:2] == 'AA':
                     match_data = self.__match_line_parsing(line)
-                    match_data.update({'trn_year_id': trn_year_id if trn_year_id else current_tournament.get('trn_year_id'),
+                    match_data.update({'trn_year_id': trn_year_id if trn_year_id
+                                       else current_tournament.get('trn_year_id'),
                                        'is_qualification': current_tournament.get('is_qualification')})
                     if match_data['trn_year_id'] is not None:
                         correct_matches.append(match_data)
@@ -338,7 +339,7 @@ class T24Matches(Tennis24):
             # print(line)
             line_split = line.split('¬')
             line_dict = {}
-            set_or_tb = 'set'
+            # set_or_tb = 'set'
             for line_part in line_split:
                 if '÷' in line_part:
                     key, value = line_part.split('÷')
@@ -347,7 +348,7 @@ class T24Matches(Tennis24):
                 if tiebreak_points:
                     match_pbp_data_out.append(self.__pbp_parse_tiebreak(tiebreak_points, t24_match_id, set_num))
                     tiebreak_points = []
-                set_or_tb = 'set'
+                # set_or_tb = 'set'
                 try:
                     set_num = int(line_dict['HB'].split(' - ')[-1].split()[-1])
                 except IndexError:
@@ -359,7 +360,7 @@ class T24Matches(Tennis24):
                     match_pbp_data_out.append(self.__pbp_parse_tiebreak(tiebreak_points, t24_match_id, set_num))
                     tiebreak_points = []
             elif line[:2] == 'HB':
-                set_or_tb = 'tiebreak'
+                # set_or_tb = 'tiebreak'
                 set_num = int(line_dict['HB'].split(' - ')[-1].split()[-1])
                 # print('HB', set_or_tb)
                 tiebreak_points = []

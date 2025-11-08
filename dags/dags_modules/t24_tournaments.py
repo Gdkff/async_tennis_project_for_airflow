@@ -1,5 +1,4 @@
 from dags_modules.dbo import DBOperator
-from dags_modules.t24_matches import T24Matches
 from dags_modules.t24_init import Tennis24, asyncio
 from datetime import datetime
 import json
@@ -27,9 +26,11 @@ class T24Tournaments(Tennis24):
             self.__last_tournament_id = max(tournaments, key=lambda x: x['id'])['id']
 
     async def __get_all_db_tournaments_years(self):
-        tournaments_years = await self.__dbo.select('public', 't24_tournaments_years', ['id', 'trn_id', 'trn_year', 'first_draw_id'])
+        tournaments_years = await self.__dbo.select('public', 't24_tournaments_years',
+                                                    ['id', 'trn_id', 'trn_year', 'first_draw_id'])
         self.__all_tournament_years = {(ty['trn_id'], ty['trn_year']): ty['id'] for ty in tournaments_years}
-        self.tournament_years_with_draw_id = {(ty['trn_id'], ty['trn_year']): ty['id'] for ty in tournaments_years if ty['first_draw_id'] is not None}
+        self.tournament_years_with_draw_id = {(ty['trn_id'], ty['trn_year']): ty['id']
+                                              for ty in tournaments_years if ty['first_draw_id'] is not None}
         self.all_trn_year_draw_ids = {t['first_draw_id']: t['id'] for t in tournaments_years if t['first_draw_id']}
         if tournaments_years:
             self.__last_tournaments_years_id = max(tournaments_years, key=lambda x: x['id'])['id']
@@ -140,7 +141,9 @@ class T24Tournaments(Tennis24):
             page_counter += 1
         return match_pages
 
-    async def load_tournaments(self, tournaments_to_load: list[dict] | None = None, on_conflict_update: bool | None = None):
+    async def load_tournaments(self,
+                               tournaments_to_load: list[dict] | None = None,
+                               on_conflict_update: bool | None = None):
         on_conflict_update = on_conflict_update if on_conflict_update else False
         if not tournaments_to_load:
             tasks = [self.__get_tournaments_links_by_trn_type_num(trn_type_num)
@@ -162,7 +165,7 @@ class T24Tournaments(Tennis24):
                                     'trn_years_loaded': None})
             self.__all_tournament_urls.update({trn['trn_archive_full_url']: trn['id'] for trn in tournaments})
         await self.__dbo.insert_or_update_many('public', 't24_tournaments', tournaments,
-                                              ['trn_archive_full_url'], on_conflict_update=on_conflict_update)
+                                               ['trn_archive_full_url'], on_conflict_update=on_conflict_update)
 
     async def load_tournaments_years(self):
         tournaments_urls = await self.__dbo.t24_get_tournaments_urls_to_load_years()
@@ -189,16 +192,15 @@ class T24Tournaments(Tennis24):
                                                      'trn_year': year,
                                                      'draws_id_loaded': None
                                                      })
-                        # print('current_tournaments_years_id =', self.__last_tournaments_years_id)
                         self.__all_tournament_years.update({(trn['id'], year): self.__last_tournaments_years_id})
             await self.__dbo.insert_or_update_many('public', 't24_tournaments_years', trn_years_data_to_db,
-                                                  ['trn_id', 'trn_year'], on_conflict_update=True)
+                                                   ['trn_id', 'trn_year'], on_conflict_update=True)
             print(f'{len(trn_years_data_to_db)} records loaded to t24_tournaments_years')
             trns_with_years = {y['trn_id'] for y in trn_years_data_to_db}
             trns_to_update = [{'id': trn_id, 'trn_years_loaded': True if trn_id in trns_with_years else False}
                               for trn_id in all_trns_in_batch]
             tasks = [self.__dbo.update('public', 't24_tournaments', trn['id'],
-                                      {'trn_years_loaded': trn['trn_years_loaded']})
+                                       {'trn_years_loaded': trn['trn_years_loaded']})
                      for trn in trns_to_update]
             await asyncio.gather(*tasks)
             print(f'{len(tournaments_with_years)} t24_tournaments.t24_trn_years_loaded updated.')
@@ -217,7 +219,7 @@ class T24Tournaments(Tennis24):
             tournaments_draws_id = await asyncio.gather(*tasks)
             tournaments_draws_id = [trn_draws_id for trn_draws_id in tournaments_draws_id if trn_draws_id]
             await self.__dbo.insert_or_update_many('public', 't24_tournaments_years', tournaments_draws_id,
-                                                  ['trn_id', 'trn_year'], on_conflict_update=True)
+                                                   ['trn_id', 'trn_year'], on_conflict_update=True)
             print(f'{len([trn for trn in tournaments_draws_id if trn['draws_id_loaded']])} draws id loaded')
             batches_count -= 1
             print(f'Batch processing time: {datetime.now() - in_time}. {batches_count} batches left to process.')
