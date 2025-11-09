@@ -178,7 +178,8 @@ def t24_load_tournaments_results():
 
 if __name__ == '__main__':
     start_time = datetime.now()
-    t24_load_daily_matches()
+    # t24_load_daily_matches()
     # t24_load_tournaments_results()
+    t24_load_matches_pbp_and_statistics()
 
     print('Time length:', datetime.now() - start_time)

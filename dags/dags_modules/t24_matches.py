@@ -209,7 +209,7 @@ class T24Matches(Tennis24):
             match_data['match_score'] = score_string
         for field in int_fields:
             if match_data.get(field) is not None:
-                match_data[field] = int(match_data[field])
+                match_data[field] = int(match_data[field].replace('/', ''))
         return match_data
 
     async def pbp_get_match_data(self, t24_match_id):
