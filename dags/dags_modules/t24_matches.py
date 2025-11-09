@@ -461,7 +461,8 @@ class T24Matches(Tennis24):
                 period = parts_of_part[0].split('÷')[1]
                 try:
                     period = 0 if period == 'Match' else int(period.replace('Set ', ''))
-                except ValueError:
+                except Exception as e:
+                    print(e)
                     period = None
             if period is None:
                 continue
