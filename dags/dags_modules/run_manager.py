@@ -52,7 +52,7 @@ class T24:
         print('Закрываем пул соединений с БД')
         await self.DBO.close_pool()
 
-    async def load_final_match_data(self):
+    async def load_matches_pbp_data(self):
         await self.__async_init_classes()
         # Загружаем из базы id матчей с незагруженными pbp
         matches_not_loaded_pbp = await self.DBO.select('public', 't24_matches', ['t24_match_id', 'trn_year_id'],
@@ -79,6 +79,11 @@ class T24:
                                                  ['t24_match_id'], on_conflict_update=True)
             batches_count -= 1
             print(f'Batch processing time: {datetime.now() - in_time}. {batches_count} batches left to process.')
+        await self.DBO.close_pool()
+
+    async def load_matches_statistics_data(self):
+        await self.__async_init_classes()
+        batch_size = self.T24Matches.concurrency
         matches_not_loaded_statistics = await self.DBO.select('public', 't24_matches',
                                                               ['t24_match_id', 'trn_year_id'],
                                                               {'match_status_short_code': 3,
@@ -168,7 +173,8 @@ def t24_load_daily_matches():
 
 def t24_load_matches_pbp_and_statistics():
     t24 = T24()
-    asyncio.run(t24.load_final_match_data())
+    asyncio.run(t24.load_matches_pbp_data())
+    asyncio.run(t24.load_matches_statistics_data())
 
 
 def t24_load_tournaments_results():

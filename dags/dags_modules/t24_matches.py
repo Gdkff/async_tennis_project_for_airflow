@@ -459,7 +459,12 @@ class T24Matches(Tennis24):
             period_last = period
             if part[:2] == 'SE':
                 period = parts_of_part[0].split('÷')[1]
-                period = 0 if period == 'Match' else int(period.replace('Set ', ''))
+                try:
+                    period = 0 if period == 'Match' else int(period.replace('Set ', ''))
+                except ValueError:
+                    period = None
+            if period is None:
+                continue
             if part[:2] == 'SG':
                 for part_of_part in parts_of_part:
                     key, value = part_of_part.split('÷')
