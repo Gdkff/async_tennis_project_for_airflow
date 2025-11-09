@@ -300,9 +300,9 @@ class T24Matches(Tennis24):
                 if '|B1|' in point:
                     t1_bp.append((set_num, game_num, point_num))
                     receiver_breakpoints += 1
-            points.append((int(game_points[0].replace('A', '50').replace('AD', '50')),
+            points.append((int(game_points[0].replace('AD', '50').replace('A', '50')),
                            int(game_points[1].replace(' |B1|', '').replace(' |B2|', '').replace(' |B3|', '').replace(
-                               'A', '50').replace('AD', '50').strip())))
+                               'AD', '50').replace('A', '50').strip())))
             # print(f'*{point}*')
             point_num += 1
         server_points_list = self.__pbp_parse_game_points(points, server, winner)
