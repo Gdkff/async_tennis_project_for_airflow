@@ -6,13 +6,229 @@ CREATE USER tennis_user WITH ENCRYPTED PASSWORD 'tennis_user_strong_password';
 
 GRANT ALL PRIVILEGES ON DATABASE tennis TO tennis_user;
 
-CREATE TABLE IF NOT EXISTS atp_matches (
-    id SERIAL PRIMARY KEY,
-    tournament VARCHAR(100),
-    year INT,
-    winner VARCHAR(100),
-    loser VARCHAR(100),
-    score VARCHAR(50),
-    round VARCHAR(10),
-    surface VARCHAR(20)
-);
+CREATE TABLE IF NOT EXISTS dim_game_pbp ( 
+server_points_line text NOT NULL,
+points_total int2 NULL,
+server_points_won int2 NULL,
+server_win bool NULL,
+receiver_points_won int2 NULL,
+receiver_breakpoints int2 NULL,
+receiver_breakpoints_converted int2 NULL,
+record_created_at timestamptz NOT NULL,
+record_updated_at timestamptz NOT NULL,
+CONSTRAINT dim_game_pbp_pk PRIMARY KEY (server_points_line));
+ALTER TABLE dim_game_pbp OWNER TO tennis_user;
+GRANT INSERT, TRIGGER, SELECT, DELETE, REFERENCES, UPDATE, TRUNCATE ON TABLE dim_game_pbp TO tennis_user;
+
+
+CREATE TABLE IF NOT EXISTS dim_tiebreak_pbp ( 
+server_points_line text NOT NULL,
+points_total int2 NULL,
+first_server_win int2 NULL,
+first_server_points_on_serve_line text NULL,
+second_server_points_on_serve_line text NULL,
+first_server_points_on_serve_won int2 NULL,
+first_server_points_on_receive_won int2 NULL,
+second_server_points_on_serve_won int2 NULL,
+second_server_points_on_receive_won int2 NULL,
+record_created_at timestamptz NOT NULL,
+record_updated_at timestamptz NOT NULL,
+CONSTRAINT dim_tiebreak_pbp_pk PRIMARY KEY (server_points_line));
+ALTER TABLE dim_tiebreak_pbp OWNER TO tennis_user;
+GRANT INSERT, TRIGGER, SELECT, DELETE, REFERENCES, UPDATE, TRUNCATE ON TABLE dim_tiebreak_pbp TO tennis_user;
+
+
+CREATE TABLE IF NOT EXISTS t24_players (
+t24_pl_id text NOT NULL,
+url text NULL,
+full_name text NULL,
+country text NULL,
+birthday date NULL,
+all_data_loaded bool NULL,
+record_created_at timestamptz NOT NULL,
+record_updated_at timestamptz NOT NULL,
+CONSTRAINT t24_players_pk PRIMARY KEY (t24_pl_id));
+ALTER TABLE t24_players OWNER TO tennis_user;
+GRANT INSERT, TRIGGER, SELECT, DELETE, REFERENCES, UPDATE, TRUNCATE ON TABLE t24_players TO tennis_user;
+
+
+CREATE TABLE IF NOT EXISTS t24_tournaments (
+id int4 NOT NULL,
+trn_archive_full_url text NOT NULL,
+trn_type text NULL,
+trn_name text NULL,
+trn_years_loaded bool NULL,
+record_updated_at timestamptz NOT NULL,
+record_created_at timestamptz NOT NULL,
+CONSTRAINT t24_tournaments_pk PRIMARY KEY (id),
+CONSTRAINT t24_tournaments_unique UNIQUE (trn_archive_full_url));
+ALTER TABLE t24_tournaments OWNER TO airflow;
+GRANT INSERT, TRIGGER, SELECT, DELETE, REFERENCES, UPDATE, TRUNCATE ON TABLE t24_tournaments TO airflow;
+GRANT INSERT, TRIGGER, SELECT, DELETE, REFERENCES, UPDATE, TRUNCATE ON TABLE t24_tournaments TO tennis_user;
+
+
+CREATE TABLE IF NOT EXISTS t24_tournaments_years ( 
+id int4 NOT NULL,
+trn_id int4 NULL,
+trn_year int4 NULL,
+first_draw_id text NULL,
+qual_draw_id text NULL,
+main_draw_id text NULL,
+draws_id_loaded bool NULL,
+record_updated_at timestamptz NULL,
+record_created_at timestamptz NULL,
+trn_results_loaded bool NULL,
+CONSTRAINT t24_tournaments_years_pk PRIMARY KEY (id),
+CONSTRAINT t24_tournaments_years_unique UNIQUE (trn_id, trn_year));
+ALTER TABLE t24_tournaments_years OWNER TO airflow;
+GRANT INSERT, TRIGGER, SELECT, DELETE, REFERENCES, UPDATE, TRUNCATE ON TABLE t24_tournaments_years TO airflow;
+GRANT INSERT, TRIGGER, SELECT, DELETE, REFERENCES, UPDATE, TRUNCATE ON TABLE t24_tournaments_years TO tennis_user;
+ALTER TABLE public.t24_tournaments_years ADD CONSTRAINT t24_tournaments_years_t24_tournaments_fk FOREIGN KEY (trn_id) REFERENCES t24_tournaments(id);
+
+
+CREATE TABLE IF NOT EXISTS t24_matches ( 
+t24_match_id text NOT NULL,
+trn_year_id int4 NOT NULL,
+is_qualification bool NULL,
+match_start timestamptz NULL,
+match_finish timestamptz NULL,
+match_status_short text NULL,
+match_status text NULL,
+t1_pl1_id text NULL,
+t1_pl2_id text NULL,
+t2_pl1_id text NULL,
+t2_pl2_id text NULL,
+team_winner int2 NULL,
+match_score text NULL,
+t1_sets_won int2 NULL,
+t2_sets_won int2 NULL,
+t1_s1_score int2 NULL,
+t1_s1_score_tiebreak int2 NULL,
+t2_s1_score int2 NULL,
+t2_s1_score_tiebreak int2 NULL,
+t1_s2_score int2 NULL,
+t1_s2_score_tiebreak int2 NULL,
+t2_s2_score int2 NULL,
+t2_s2_score_tiebreak int2 NULL,
+t1_s3_score int2 NULL,
+t1_s3_score_tiebreak int2 NULL,
+t2_s3_score int2 NULL,
+t2_s3_score_tiebreak int2 NULL,
+t1_s4_score int2 NULL,
+t1_s4_score_tiebreak int2 NULL,
+t2_s4_score int2 NULL,
+t2_s4_score_tiebreak int2 NULL,
+t1_s5_score int2 NULL,
+t1_s5_score_tiebreak int2 NULL,
+t2_s5_score int2 NULL,
+t2_s5_score_tiebreak int2 NULL,
+match_status_short_code int2 NULL,
+match_status_code int2 NULL,
+match_url text NULL,
+final_pbp_data_loaded bool NULL,
+record_created_at timestamptz NOT NULL,
+record_updated_at timestamptz NOT NULL,
+final_statistics_loaded bool NULL,
+CONSTRAINT t24_matches_pk PRIMARY KEY (t24_match_id));
+ALTER TABLE t24_matches OWNER TO tennis_user;
+GRANT INSERT, TRIGGER, SELECT, DELETE, REFERENCES, UPDATE, TRUNCATE ON TABLE t24_matches TO tennis_user;
+ALTER TABLE public.t24_matches ADD CONSTRAINT t24_matches_t24_players_fk FOREIGN KEY (t1_pl1_id) REFERENCES t24_players(t24_pl_id);
+ALTER TABLE public.t24_matches ADD CONSTRAINT t24_matches_t24_players_fk_1 FOREIGN KEY (t1_pl2_id) REFERENCES t24_players(t24_pl_id);
+ALTER TABLE public.t24_matches ADD CONSTRAINT t24_matches_t24_players_fk_2 FOREIGN KEY (t2_pl1_id) REFERENCES t24_players(t24_pl_id);
+ALTER TABLE public.t24_matches ADD CONSTRAINT t24_matches_t24_players_fk_3 FOREIGN KEY (t2_pl2_id) REFERENCES t24_players(t24_pl_id);
+ALTER TABLE public.t24_matches ADD CONSTRAINT t24_matches_t24_tournaments_years_fk FOREIGN KEY (trn_year_id) REFERENCES t24_tournaments_years(id);
+
+
+CREATE TABLE IF NOT EXISTS t24_matches_defective ( 
+t24_match_id text NOT NULL,
+match_url text NULL,
+trn_year_id int4 NULL,
+is_qualification bool NULL,
+match_start timestamptz NULL,
+match_finish timestamptz NULL,
+match_status_short text NULL,
+match_status text NULL,
+t1_pl1_id text NULL,
+t1_pl2_id text NULL,
+t2_pl1_id text NULL,
+t2_pl2_id text NULL,
+team_winner int2 NULL,
+match_score text NULL,
+t1_sets_won int2 NULL,
+t2_sets_won int2 NULL,
+t1_s1_score int2 NULL,
+t1_s1_score_tiebreak int2 NULL,
+t2_s1_score int2 NULL,
+t2_s1_score_tiebreak int2 NULL,
+t1_s2_score int2 NULL,
+t1_s2_score_tiebreak int2 NULL,
+t2_s2_score int2 NULL,
+t2_s2_score_tiebreak int2 NULL,
+t1_s3_score int2 NULL,
+t1_s3_score_tiebreak int2 NULL,
+t2_s3_score int2 NULL,
+t2_s3_score_tiebreak int2 NULL,
+t1_s4_score int2 NULL,
+t1_s4_score_tiebreak int2 NULL,
+t2_s4_score int2 NULL,
+t2_s4_score_tiebreak int2 NULL,
+t1_s5_score int2 NULL,
+t1_s5_score_tiebreak int2 NULL,
+t2_s5_score int2 NULL,
+t2_s5_score_tiebreak int2 NULL,
+match_status_short_code int2 NULL,
+match_status_code int2 NULL,
+final_pbp_data_loaded bool NULL,
+record_created_at timestamptz NOT NULL,
+record_updated_at timestamptz NOT NULL,
+CONSTRAINT t24_matches_defective_pk PRIMARY KEY (t24_match_id));
+ALTER TABLE t24_matches_defective OWNER TO tennis_user;
+GRANT INSERT, TRIGGER, SELECT, DELETE, REFERENCES, UPDATE, TRUNCATE ON TABLE t24_matches_defective TO tennis_user;
+ALTER TABLE public.t24_matches_defective ADD CONSTRAINT t24_matches_defective_t24_players_fk FOREIGN KEY (t1_pl1_id) REFERENCES t24_players(t24_pl_id);
+ALTER TABLE public.t24_matches_defective ADD CONSTRAINT t24_matches_defective_t24_players_fk_1 FOREIGN KEY (t1_pl2_id) REFERENCES t24_players(t24_pl_id);
+ALTER TABLE public.t24_matches_defective ADD CONSTRAINT t24_matches_defective_t24_players_fk_2 FOREIGN KEY (t2_pl1_id) REFERENCES t24_players(t24_pl_id);
+ALTER TABLE public.t24_matches_defective ADD CONSTRAINT t24_matches_defective_t24_players_fk_3 FOREIGN KEY (t2_pl2_id) REFERENCES t24_players(t24_pl_id);
+ALTER TABLE public.t24_matches_defective ADD CONSTRAINT t24_matches_defective_t24_tournaments_years_fk FOREIGN KEY (trn_year_id) REFERENCES t24_tournaments_years(id);
+
+
+CREATE TABLE IF NOT EXISTS t24_game_pbp ( 
+t24_match_id text NOT NULL,
+"set" int2 NOT NULL,
+game int2 NOT NULL,
+"server" int2 NOT NULL,
+server_game_points_line text NULL,
+server_tiebreak_points_line text NULL,
+record_created_at timestamptz NOT NULL,
+record_updated_at timestamptz NOT NULL,
+CONSTRAINT t24_game_pbp_unique UNIQUE (t24_match_id, set, game));
+ALTER TABLE t24_game_pbp OWNER TO tennis_user;
+GRANT INSERT, TRIGGER, SELECT, DELETE, REFERENCES, UPDATE, TRUNCATE ON TABLE t24_game_pbp TO tennis_user;
+ALTER TABLE public.t24_game_pbp ADD CONSTRAINT t24_game_pbp_dim_game_pbp_fk FOREIGN KEY (server_game_points_line) REFERENCES dim_game_pbp(server_points_line);
+ALTER TABLE public.t24_game_pbp ADD CONSTRAINT t24_game_pbp_dim_tiebreak_pbp_fk FOREIGN KEY (server_tiebreak_points_line) REFERENCES dim_tiebreak_pbp(server_points_line);
+ALTER TABLE public.t24_game_pbp ADD CONSTRAINT t24_game_pbp_t24_matches_fk FOREIGN KEY (t24_match_id) REFERENCES t24_matches(t24_match_id);
+
+
+CREATE TABLE IF NOT EXISTS t24_set_statistics ( 
+t24_match_id text NOT NULL,
+team_num int2 NOT NULL,
+"set" int2 NOT NULL,
+aces int2 NULL,
+double_faults int2 NULL,
+service_points int2 NULL,
+first_serves_won int2 NULL,
+first_serves_success int2 NULL,
+second_serves_won int2 NULL,
+break_points_created int2 NULL,
+break_points_converted int2 NULL,
+average_first_serve_speed_km_h float8 NULL,
+average_second_serve_speed_km_h float8 NULL,
+winners int2 NULL,
+unforced_errors int2 NULL,
+net_approaches int2 NULL,
+net_points_won int2 NULL,
+record_created_at timestamptz NOT NULL,
+record_updated_at timestamptz NOT NULL,
+CONSTRAINT t24_set_statistics_unique UNIQUE (t24_match_id, team_num, set));
+ALTER TABLE t24_set_statistics OWNER TO tennis_user;
+GRANT INSERT, TRIGGER, SELECT, DELETE, REFERENCES, UPDATE, TRUNCATE ON TABLE t24_set_statistics TO tennis_user;
+ALTER TABLE public.t24_set_statistics ADD CONSTRAINT t24_set_statistics_t24_matches_fk FOREIGN KEY (t24_match_id) REFERENCES t24_matches(t24_match_id);
