@@ -2,8 +2,7 @@ import asyncio
 import json
 from datetime import datetime
 from dags_modules_atp.atp_dbo import DBOATP
-
-from atp_init import ATPInit
+from dags_modules_atp.atp_init import ATPInit
 
 
 class ATPPlayers(ATPInit):
