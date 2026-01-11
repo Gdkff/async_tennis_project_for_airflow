@@ -1,11 +1,11 @@
-from dags_modules.dbo import DBOperator
-from dags_modules.t24_init import Tennis24, asyncio
+from dags_modules_t24.t24_dbo import DBOT24
+from dags_modules_t24.t24_init import Tennis24, asyncio
 from datetime import datetime
 import json
 
 
 class T24Tournaments(Tennis24):
-    def __init__(self, dbo: DBOperator):
+    def __init__(self, dbo: DBOT24):
         super().__init__()
         self.__dbo = dbo
         self.__all_tournament_urls = dict()

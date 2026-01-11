@@ -1,12 +1,12 @@
-from dags_modules.dbo import DBOperator
-from dags_modules.t24_init import Tennis24
+from dags_modules_t24.t24_dbo import DBOT24
+from dags_modules_t24.t24_init import Tennis24
 from datetime import datetime, date, timedelta
 from settings.config import tz
 import re
 
 
 class T24Matches(Tennis24):
-    def __init__(self, dbo_in: DBOperator):
+    def __init__(self, dbo_in: DBOT24):
         super().__init__()
         self.__dbo = dbo_in
         self.__daily_match_pages = list()
@@ -508,9 +508,9 @@ class T24Matches(Tennis24):
 
 
 if __name__ == '__main__':
-    import dbo
+    import t24_dbo
     import asyncio
 
-    dbo = dbo.DBOperator()
+    dbo = t24_dbo.DBOT24()
     t24 = T24Matches(dbo)
     asyncio.run(t24.get_match_statistic_by_match_id('6kHSSC8L'))

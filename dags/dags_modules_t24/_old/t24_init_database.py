@@ -1,4 +1,4 @@
-from dags_modules.t24_init import Tennis24, asyncio
+from dags_modules_t24.t24_init import Tennis24, asyncio
 from datetime import datetime
 from settings.config import tz
 

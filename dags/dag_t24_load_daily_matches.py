@@ -1,7 +1,7 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from datetime import datetime, timedelta
-from dags_modules.run_manager import t24_load_daily_matches
+from dags_modules_t24.t24__run_manager import t24_load_daily_matches
 
 
 default_args = {
@@ -16,7 +16,7 @@ default_args = {
 with DAG(
     dag_id='t24_load_daily_matches',
     default_args=default_args,
-    description='Test DAG',
+    description='Daily matches loading',
     schedule="*/5 * * * *",
     start_date=datetime(2025, 1, 1),
     catchup=False,

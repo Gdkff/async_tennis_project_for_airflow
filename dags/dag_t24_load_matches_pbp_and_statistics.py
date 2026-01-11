@@ -1,7 +1,7 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from datetime import datetime, timedelta
-from dags_modules.run_manager import t24_load_matches_pbp_and_statistics
+from dags_modules_t24.t24__run_manager import t24_load_matches_pbp_and_statistics
 
 
 default_args = {

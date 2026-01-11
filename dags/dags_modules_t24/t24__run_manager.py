@@ -1,11 +1,11 @@
 import asyncio
 from datetime import datetime
-from dags_modules import t24_matches, t24_tournaments, t24_players, dbo
+from dags_modules_t24 import t24_matches, t24_tournaments, t24_players, t24_dbo
 
 
 class T24:
     def __init__(self):
-        self.DBO = dbo.DBOperator()
+        self.DBO = t24_dbo.DBOT24()
         self.T24Tournaments = t24_tournaments.T24Tournaments(self.DBO)
         self.T24Players = t24_players.T24Players(self.DBO)
         self.T24Matches = t24_matches.T24Matches(self.DBO)
