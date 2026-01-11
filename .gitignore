@@ -8,5 +8,6 @@ plugins/*
 #dags/test_dag.py
 _dags_test/
 _docs/
+_old/*
 .env.local
 dags/.idea/
