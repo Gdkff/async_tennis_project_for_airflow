@@ -31,11 +31,11 @@ jobs:
             else
               echo "File not found: $FILE_PATH"
             fi
-            #docker compose down
-            #docker stop $(docker ps -aq)
-            #docker rm $(docker ps -aq)
-            #docker rmi $(docker images -q)
-            #docker volume rm $(docker volume ls -q)
-            #docker network rm $(docker network ls -q | grep -v 'bridge\|host\|none')
-            #docker compose up -d --build
+            docker compose down
+            docker stop $(docker ps -aq)
+            docker rm $(docker ps -aq)
+            docker rmi $(docker images -q)
+            docker volume rm $(docker volume ls -q)
+            docker network rm $(docker network ls -q | grep -v 'bridge\|host\|none')
+            docker compose up -d --build
           EOF
