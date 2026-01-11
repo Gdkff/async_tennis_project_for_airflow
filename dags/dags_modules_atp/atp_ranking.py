@@ -1,8 +1,7 @@
 import asyncio
 from datetime import datetime, date
 from dags_modules_atp.atp_dbo import DBOATP
-
-from atp_init import ATPInit
+from dags_modules_atp.atp_init import ATPInit
 
 
 class ATPRanking(ATPInit):
