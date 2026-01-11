@@ -103,6 +103,7 @@ class DBOperator:
         FROM UNNEST ({', '.join(placeholders)}) AS t({columns_insert_str})
         ON CONFLICT ({', '.join(conflict_fields)}) {do_on_conflict};
         """
+        # print(query_template)
         for i in range(0, len(records), CHUNK_SIZE):
             chunk = records[i:i + CHUNK_SIZE]
             values = [[r[col] for col in columns_insert] for r in chunk]

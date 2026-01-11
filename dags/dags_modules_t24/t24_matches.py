@@ -37,6 +37,7 @@ class T24Matches(Tennis24):
                                      match_pages_in: list[tuple] = None) -> tuple[list[dict], list[dict]]:
         correct_matches = list()
         defective_matches = list()
+        defective_match_ids = set()
         match_pages = match_pages_in if match_pages_in else [(page, None) for page in self.__daily_match_pages]
         for match_page, trn_year_id in match_pages:
             current_tournament = {}
@@ -51,7 +52,10 @@ class T24Matches(Tennis24):
                     if match_data['trn_year_id'] is not None:
                         correct_matches.append(match_data)
                     else:
-                        defective_matches.append(match_data)
+                        if match_data['t24_match_id'] not in defective_match_ids:
+                            defective_matches.append(match_data)
+                        defective_match_ids.add(match_data['t24_match_id'])
+
         return correct_matches, defective_matches
 
     @staticmethod
