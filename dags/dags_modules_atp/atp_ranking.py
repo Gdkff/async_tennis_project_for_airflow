@@ -40,7 +40,7 @@ class ATPRanking(ATPInit):
             date_ranking_data = {
                 'rank': None,
                 'date': {'ranking_type': ranking_type_short_for_db, 'week_date': week_date, 'url': url,
-                         'loaded': False}}
+                         'count_rows_on_page': None, 'count_rows_loaded': None, 'loaded': False}}
             return date_ranking_data
         soup_lines = ranking_table_soup.find_all('tr')[1:]
         count_rows_on_page = len(soup_lines)
@@ -50,7 +50,7 @@ class ATPRanking(ATPInit):
             date_ranking_data = {
                 'rank': None,
                 'date': {'ranking_type': ranking_type_short_for_db, 'week_date': week_date, 'url': url,
-                         'count_rows_on_page': count_rows_on_page, 'loaded': False}}
+                         'count_rows_on_page': count_rows_on_page, 'count_rows_loaded': None, 'loaded': False}}
             return date_ranking_data
         ranking_data = []
         for line_soup in soup_lines:
