@@ -112,7 +112,7 @@ class DBOperator:
                 try:
                     async with self.pool.acquire() as conn:
                         await conn.execute(query_template, *arrays)
-                    break  # успех
+                    break
                 except (asyncpg.exceptions.ConnectionDoesNotExistError,
                         asyncpg.exceptions.InterfaceError) as e:
                     if attempt == MAX_RETRIES - 1:

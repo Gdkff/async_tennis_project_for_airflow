@@ -37,8 +37,10 @@ class T24Tournaments(Tennis24):
 
     async def __get_tournaments_links_by_trn_type_num(self, trn_type_num: int):
         tournaments_out = []
-        tournaments_raw = self._get_html_async(f'https://www.tennis24.com/x/req/m_2_{trn_type_num}', need_soup=False)
-        tournaments_split = (await tournaments_raw).split('¬~')
+        tournaments_raw = await self._get_html_async(f'https://www.tennis24.com/x/req/m_2_{trn_type_num}', need_soup=False)
+        if not tournaments_raw:
+            return
+        tournaments_split = tournaments_raw.split('¬~')
         trn_type = None
         for line in tournaments_split:
             if line.strip() == '':
@@ -68,9 +70,9 @@ class T24Tournaments(Tennis24):
         soup = await self._get_html_async(tournament_data['trn_archive_full_url'], need_soup=True)
         tournament_data['years'] = []
         if soup:
-            archive_years = soup.find_all('div', class_='archive__row')
+            archive_years = soup.find_all('div', class_='archiveLatte__row')
             for trn_raw in archive_years:
-                trn_name_with_year = trn_raw.find('div', class_='archive__season').text.strip()
+                trn_name_with_year = trn_raw.find('div', class_='archiveLatte__season').text.strip()
                 year = trn_name_with_year.split()[-1]
                 if not year.isdigit():
                     print(f'!!! Year: {year}')
@@ -179,6 +181,7 @@ class T24Tournaments(Tennis24):
             tournaments_with_years = await asyncio.gather(*tasks)
             print(f'{len(tournaments_with_years)} tournaments with years got.')
             trn_years_data_to_db = []
+            trn_years_anti_doubles_set = set()
             for trn in tournaments_with_years:
                 for year in trn['years']:
                     if (trn['id'], year) not in self.__tournament_years_with_draw_id:
@@ -187,11 +190,13 @@ class T24Tournaments(Tennis24):
                             trn_year_id = self.__last_tournaments_years_id
                         else:
                             trn_year_id = self.__all_tournament_years[(trn['id'], year)]
-                        trn_years_data_to_db.append({'id': trn_year_id,
-                                                     'trn_id': trn['id'],
-                                                     'trn_year': year,
-                                                     'draws_id_loaded': None
-                                                     })
+                        if (trn['id'], year) not in trn_years_anti_doubles_set:
+                            trn_years_data_to_db.append({'id': trn_year_id,
+                                                         'trn_id': trn['id'],
+                                                         'trn_year': year,
+                                                         'draws_id_loaded': None
+                                                         })
+                            trn_years_anti_doubles_set.add((trn['id'], year))
                         self.__all_tournament_years.update({(trn['id'], year): self.__last_tournaments_years_id})
             await self.__dbo.insert_or_update_many('public', 't24_tournaments_years', trn_years_data_to_db,
                                                    ['trn_id', 'trn_year'], on_conflict_update=True)
@@ -226,6 +231,6 @@ class T24Tournaments(Tennis24):
 
     async def t24_load_tournaments_and_years(self, tournaments_to_load: list[dict] | None = None):
         await self.init_async()
-        await self.load_tournaments(tournaments_to_load, on_conflict_update=True)
+        # await self.load_tournaments(tournaments_to_load, on_conflict_update=True)
         await self.load_tournaments_years()
         await self.load_tournaments_draws_id()

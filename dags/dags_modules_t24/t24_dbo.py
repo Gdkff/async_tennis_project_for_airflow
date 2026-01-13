@@ -5,16 +5,6 @@ class DBOT24(DBOperator):
     def __init__(self):
         super().__init__()
 
-    async def close_pg_connections(self):
-        query = """ SELECT pg_terminate_backend(pid)
-                    FROM pg_stat_activity
-                    WHERE datname = 'tennis'
-                      AND state = 'idle'
-                      AND pid <> pg_backend_pid();
-                """
-        async with self.pool.acquire() as connection:
-            await connection.fetch(query)
-
     async def t24_get_tournaments_urls_to_load_years(self):
         select_query = f""" select  id, 
                                     trn_archive_full_url

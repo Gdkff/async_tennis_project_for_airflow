@@ -143,9 +143,23 @@ class T24:
             await self.DBO.insert_or_update_many('public', 't24_players', new_players_to_db,
                                                  ['t24_pl_id'], on_conflict_update=False)
             print(f'Загружаем {len(correct_matches)} корректных матчей в базу')
-            await self.DBO.insert_or_update_many('public', 't24_matches', correct_matches, ['t24_match_id'])
+            correct_match_ids_anti_doubles_set = set()
+            correct_matches_without_doubles = []
+            for m in correct_matches:
+                if m['t24_match_id'] not in correct_match_ids_anti_doubles_set:
+                    correct_matches_without_doubles.append(m)
+                correct_match_ids_anti_doubles_set.add(m['t24_match_id'])
+            await self.DBO.insert_or_update_many('public', 't24_matches', correct_matches_without_doubles,
+                                                 ['t24_match_id'])
             print(f'Загружаем {len(defective_matches)} дефектных матчей в базу')
-            await self.DBO.insert_or_update_many('public', 't24_matches_defective', defective_matches, ['t24_match_id'])
+            defective_match_ids_anti_doubles_set = set()
+            defective_matches_without_doubles = []
+            for m in defective_matches:
+                if m['t24_match_id'] not in defective_match_ids_anti_doubles_set:
+                    defective_matches_without_doubles.append(m)
+                defective_match_ids_anti_doubles_set.add(m['t24_match_id'])
+            await self.DBO.insert_or_update_many('public', 't24_matches_defective', defective_matches_without_doubles,
+                                                 ['t24_match_id'])
             print('Загружаем информацию по новым игрокам')
             new_players_data_to_db = await self.T24Players.load_players_data_to_db([pl_id for pl_id in new_players])
             print('Загружаем данные по игрокам в базу')
@@ -163,6 +177,13 @@ class T24:
             batches_count -= 1
             print(f'Batch processing time: {datetime.now() - in_time}. {batches_count} batches left to process.')
         print('Закрываем пул соединений с БД')
+        await self.DBO.close_pool()
+
+    async def t24_load_tournaments_and_years(self):
+        print('Инициализируем пул соединений и загружаем из базы все id игроков')
+        await self.__async_init_classes()
+        await self.__async_init_classes_variables()
+        await self.T24Tournaments.t24_load_tournaments_and_years()
         await self.DBO.close_pool()
 
 
@@ -186,10 +207,16 @@ def t24_load_tournaments_results():
     asyncio.run(t24.load_matches_statistics_data())
 
 
+def t24_load_tournaments_and_years():
+    t24 = T24()
+    asyncio.run(t24.t24_load_tournaments_and_years())
+
+
 if __name__ == '__main__':
     start_time = datetime.now()
-    t24_load_daily_matches()
-    # t24_load_tournaments_results()
-    # t24_load_matches_pbp_and_statistics()
+    # t24_load_daily_matches()
+    t24_load_tournaments_results()
+    t24_load_matches_pbp_and_statistics()
+    # t24_load_tournaments_and_years()
 
     print('Time length:', datetime.now() - start_time)

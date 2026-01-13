@@ -232,3 +232,69 @@ CONSTRAINT t24_set_statistics_unique UNIQUE (t24_match_id, team_num, set));
 ALTER TABLE t24_set_statistics OWNER TO tennis_user;
 GRANT INSERT, TRIGGER, SELECT, DELETE, REFERENCES, UPDATE, TRUNCATE ON TABLE t24_set_statistics TO tennis_user;
 ALTER TABLE public.t24_set_statistics ADD CONSTRAINT t24_set_statistics_t24_matches_fk FOREIGN KEY (t24_match_id) REFERENCES t24_matches(t24_match_id);
+
+
+CREATE TABLE IF NOT EXISTS public.atp_players (
+atp_pl_id text not null,
+last_name text null,
+first_name text null,
+country text null,
+birthday date null,
+birthplace text null,
+weight numeric(9,2) null,
+height numeric(9,2) null,
+play_hand text null,
+back_hand text null,
+coach text null,
+pl_data_loaded bool null,
+record_created_at timestamp not null,
+record_updated_at timestamp not null,
+CONSTRAINT atp_players_pk PRIMARY KEY (atp_pl_id)
+);
+ALTER TABLE atp_players OWNER TO tennis_user;
+GRANT SELECT, TRUNCATE, INSERT, REFERENCES, DELETE, UPDATE, TRIGGER ON TABLE atp_players TO tennis_user;
+
+
+CREATE TABLE IF NOT EXISTS public.atp_ranking_dates (
+ranking_type CHAR not null,
+week_date DATE not null,
+url TEXT not null,
+count_rows_on_page INT null,
+count_rows_loaded INT null,
+loaded BOOL null,
+record_created_at timestamp not null,
+record_updated_at timestamp not null
+);
+ALTER TABLE atp_ranking_dates OWNER TO tennis_user;
+GRANT SELECT, TRUNCATE, INSERT, REFERENCES, DELETE, UPDATE, TRIGGER ON TABLE atp_ranking_dates TO tennis_user;
+ALTER TABLE public.atp_ranking_dates ADD CONSTRAINT atp_ranking_dates_unique UNIQUE (week_date,ranking_type);
+
+
+CREATE TABLE IF NOT EXISTS public.atp_ranking_singles (
+week_date DATE not null,
+rank INT not null,
+atp_pl_id TEXT not null,
+points INT not null,
+trn_played INT null,
+record_created_at timestamp not null,
+record_updated_at timestamp not null
+);
+ALTER TABLE atp_ranking_singles OWNER TO tennis_user;
+GRANT SELECT, TRUNCATE, INSERT, REFERENCES, DELETE, UPDATE, TRIGGER ON TABLE atp_ranking_singles TO tennis_user;
+ALTER TABLE public.atp_ranking_singles ADD CONSTRAINT atp_ranking_singles_atp_players_fk FOREIGN KEY (atp_pl_id) REFERENCES public.atp_players(atp_pl_id);
+ALTER TABLE public.atp_ranking_singles ADD CONSTRAINT atp_ranking_singles_unique UNIQUE (week_date,atp_pl_id);
+
+
+CREATE TABLE IF NOT EXISTS public.atp_ranking_doubles (
+week_date DATE not null,
+rank INT not null,
+atp_pl_id TEXT not null,
+points INT not null,
+trn_played INT null,
+record_created_at timestamp not null,
+record_updated_at timestamp not null
+);
+ALTER TABLE atp_ranking_doubles OWNER TO tennis_user;
+GRANT SELECT, TRUNCATE, INSERT, REFERENCES, DELETE, UPDATE, TRIGGER ON TABLE atp_ranking_doubles TO tennis_user;
+ALTER TABLE public.atp_ranking_doubles ADD CONSTRAINT atp_ranking_doubles_atp_players_fk FOREIGN KEY (atp_pl_id) REFERENCES public.atp_players(atp_pl_id);
+ALTER TABLE public.atp_ranking_doubles ADD CONSTRAINT atp_ranking_doubles_unique UNIQUE (week_date,atp_pl_id);
