@@ -426,7 +426,13 @@ class T24Matches(Tennis24):
                                                ['server_points_line'])
         await self.__dbo.insert_or_update_many('public', 'dim_tiebreak_pbp', new_dim_pbp_tiebreak_lines_to_db,
                                                ['server_points_line'])
-        await self.__dbo.insert_or_update_many('public', 't24_game_pbp', pbp_games_to_db,
+        match_id_set_game_anti_doubles_set = set()
+        pbp_games_to_db_without_doubles = []
+        for game in pbp_games_to_db:
+            if (game['t24_match_id'], game['set'], game['game']) not in match_id_set_game_anti_doubles_set:
+                pbp_games_to_db_without_doubles.append(game)
+            match_id_set_game_anti_doubles_set.add((game['t24_match_id'], game['set'], game['game']))
+        await self.__dbo.insert_or_update_many('public', 't24_game_pbp', pbp_games_to_db_without_doubles,
                                                ['t24_match_id', 'set', 'game'])
 
     async def get_match_statistic_by_match_id(self, t24_match_id: str) -> list:
