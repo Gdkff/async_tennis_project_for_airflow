@@ -231,6 +231,6 @@ class T24Tournaments(Tennis24):
 
     async def t24_load_tournaments_and_years(self, tournaments_to_load: list[dict] | None = None):
         await self.init_async()
-        # await self.load_tournaments(tournaments_to_load, on_conflict_update=True)
+        await self.load_tournaments(tournaments_to_load, on_conflict_update=True)
         await self.load_tournaments_years()
         await self.load_tournaments_draws_id()

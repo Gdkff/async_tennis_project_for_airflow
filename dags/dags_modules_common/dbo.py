@@ -106,7 +106,7 @@ class DBOperator:
         # print(query_template)
         for i in range(0, len(records), CHUNK_SIZE):
             chunk = records[i:i + CHUNK_SIZE]
-            values = [[r[col] for col in columns_insert] for r in chunk]
+            values = [[r.get(col) for col in columns_insert] for r in chunk]
             arrays = list(zip(*values))
             for attempt in range(MAX_RETRIES):
                 try:
