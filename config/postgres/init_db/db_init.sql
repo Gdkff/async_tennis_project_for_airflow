@@ -298,3 +298,25 @@ ALTER TABLE atp_ranking_doubles OWNER TO tennis_user;
 GRANT SELECT, TRUNCATE, INSERT, REFERENCES, DELETE, UPDATE, TRIGGER ON TABLE atp_ranking_doubles TO tennis_user;
 ALTER TABLE public.atp_ranking_doubles ADD CONSTRAINT atp_ranking_doubles_atp_players_fk FOREIGN KEY (atp_pl_id) REFERENCES public.atp_players(atp_pl_id);
 ALTER TABLE public.atp_ranking_doubles ADD CONSTRAINT atp_ranking_doubles_unique UNIQUE (week_date,atp_pl_id);
+
+
+CREATE TABLE IF NOT EXISTS public.atp_tournaments ( 
+atp_trn_id text NOT NULL,
+trn_year int4 NOT NULL,
+tour_type text NOT NULL,
+trn_name text NULL,
+trn_start_date date NOT NULL,
+trn_end_date date NULL,
+trn_city text NULL,
+trn_country text NULL,
+singles_main_draw_loaded bool NULL,
+singles_qualification_draw_loaded bool NULL,
+doubles_main_draw_loaded bool NULL,
+doubles_qualification_draw_loaded bool NULL,
+results_loaded bool NULL, draws_count int2 NULL,
+record_created_at timestamp NOT NULL,
+record_updated_at timestamp NOT NULL,
+CONSTRAINT atp_tournaments_pk PRIMARY KEY (atp_trn_id, trn_year, trn_start_date)
+);
+ALTER TABLE atp_tournaments OWNER TO tennis_user;
+GRANT TRIGGER, TRUNCATE, REFERENCES, SELECT, INSERT, DELETE, UPDATE ON TABLE atp_tournaments TO tennis_user;
