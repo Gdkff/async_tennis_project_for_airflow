@@ -20,6 +20,7 @@ class ATPRanking(ATPInit):
                                             {'ranking_type': ranking_type_to_db})
             dates = [d['week_date'] for d in dates]
             self.db_dates[ranking_type] = dates
+        print('Даты рейтинга загружены в кэш')
 
     async def web_ranking_dates_loading(self, ranking_type: str) -> list[date]:
         url = f'https://www.atptour.com/en/rankings/{ranking_type}'

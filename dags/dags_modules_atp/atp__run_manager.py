@@ -1,6 +1,6 @@
 import asyncio
-from datetime import datetime
-from dags_modules_atp import atp_ranking, atp_dbo, atp_players, atp_init
+from datetime import datetime, date
+from dags_modules_atp import atp_ranking, atp_dbo, atp_players, atp_init, atp_tournaments, atp_matches
 
 
 class ATP(atp_init.ATPInit):
@@ -9,6 +9,8 @@ class ATP(atp_init.ATPInit):
         self.DBO = atp_dbo.DBOATP()
         self.ATPRanking = atp_ranking.ATPRanking(self.DBO)
         self.ATPPlayers = atp_players.ATPPlayers(self.DBO)
+        self.ATPMatches = atp_matches.ATPMatches(self.DBO)
+        self.ATPTournaments = atp_tournaments.ATPTournaments(self.DBO)
 
     async def __async_init_classes(self):
         self.__pool = await self.DBO.init_db_pool()
@@ -96,6 +98,66 @@ class ATP(atp_init.ATPInit):
             batches_count -= 1
             print(f'Батч загружен за {datetime.now() - in_time}. Осталось загрузить {batches_count}')
 
+    async def get_archive_tournaments(self):
+        await self.__async_init_classes()
+        print('Готовим года к загрузке архивных турниров, бьем на батчи')
+        years_list = list(range(1915, datetime.now().year + 1))
+        batch_size = self.ATPTournaments.concurrency
+        batches = [years_list[i:i + batch_size] for i in range(0, len(years_list), batch_size)]
+        batches_count = len(batches)
+        print(f'Всего {batches_count} батчей с годами')
+        for batch in batches:
+            in_time = datetime.now()
+            tasks = [self.ATPTournaments.get_one_year_result_archive(year) for year in batch]
+            print('Загружаем архивные турниры')
+            batch_archive_data = await asyncio.gather(*tasks)
+            batch_archive_data = [d for inner in batch_archive_data for d in inner]
+            print('Данные в батче архивных турниров с сайта загружены')
+            await self.DBO.insert_or_update_many('public', 'atp_tournaments', batch_archive_data,
+                                                 ['atp_trn_id', 'trn_year', 'trn_start_date'])
+            print('Данные в батче архивных турниров загружены в БД')
+            batches_count -= 1
+            print(f'Батч загружен за {datetime.now() - in_time}. Осталось загрузить {batches_count}')
+
+    async def load_tournaments_matches(self):
+        await self.__async_init_classes()
+        await self.__async_init_classes_variables()
+        tournaments = await self.DBO.select('public', 'atp_tournaments', [
+            'atp_trn_id', 'trn_year', 'tour_type', 'trn_name', 'trn_start_date', 'trn_end_date', 'trn_city',
+            'trn_country', 'singles_main_draw_matches', 'singles_qualification_draw_matches',
+            'doubles_main_draw_matches', 'doubles_qualification_draw_matches', 'draws_count', 'matches_loaded'],
+                                            {'matches_loaded': None})
+        batch_size = self.ATPTournaments.concurrency
+        # batch_size = 1
+        batches = [tournaments[i:i + batch_size] for i in range(0, len(tournaments), batch_size)]
+        batches_count = len(batches)
+        print(f'Всего {batches_count} батчей')
+        for batch in batches:
+            in_time = datetime.now()
+            tasks = [self.ATPMatches.get_tournament_matches(trn) for trn in batch]
+            trn_and_match_data = await asyncio.gather(*tasks)
+            players_out_set = set()
+            matches_out = []
+            tournaments_out = []
+            for trn, matches, players in trn_and_match_data:
+                tournaments_out.append(trn)
+                matches_out.extend(matches)
+                players_out_set.update({pl for pl in players if pl not in self.ATPPlayers.all_pl_ids})
+            players_out = [{'atp_pl_id': pl} for pl in players_out_set]
+            await self.DBO.insert_or_update_many('public', 'atp_players', players_out,
+                                                 ['atp_pl_id'])
+            self.ATPPlayers.all_pl_ids.update({pl['atp_pl_id'] for pl in players_out})
+            await self.DBO.close_pg_connections()
+            await self.DBO.insert_or_update_many('public', 'atp_matches', matches_out,
+                                                 ['atp_trn_id', 'trn_year', 'trn_start_date', 'draw_name',
+                                                  'round_number', 'match_number'
+                                                  ], on_conflict_update=False)
+            await self.DBO.close_pg_connections()
+            await self.DBO.insert_or_update_many('public', 'atp_tournaments', tournaments_out,
+                                                 ['atp_trn_id', 'trn_year', 'trn_start_date'])
+            batches_count -= 1
+            print(f'Батч загружен за {datetime.now() - in_time}. Осталось загрузить {batches_count}')
+
 
 def atp_load_rankings():
     atp = ATP()
@@ -107,9 +169,21 @@ def atp_load_new_players():
     asyncio.run(atp.load_new_players())
 
 
+def get_archive_tournaments():
+    atp = ATP()
+    asyncio.run(atp.get_archive_tournaments())
+
+
+def get_tournaments_matches():
+    atp = ATP()
+    asyncio.run(atp.load_tournaments_matches())
+
+
 if __name__ == '__main__':
     start_time = datetime.now()
-    atp_load_rankings()
+    # atp_load_rankings()
     # atp_load_new_players()
+    # get_archive_tournaments()
+    get_tournaments_matches()
 
     print('Time length:', datetime.now() - start_time)

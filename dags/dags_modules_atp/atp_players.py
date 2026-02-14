@@ -16,8 +16,8 @@ class ATPPlayers(ATPInit):
 
     async def __db_all_pl_ids_loading(self):
         pl_ids = await self.__dbo.select('public', 'atp_players', ['atp_pl_id'])
-        pl_ids = [p['atp_pl_id'] for p in pl_ids]
-        self.all_pl_ids.update(pl_ids)
+        self.all_pl_ids = {p['atp_pl_id'] for p in pl_ids}
+        print('Игроки загружены в кэш')
 
     async def get_pl_info_by_atp_pl_id(self, atp_pl_id: str) -> dict | None:
         url = f'https://www.atptour.com/en/-/www/players/hero/{atp_pl_id}'
@@ -64,6 +64,6 @@ class ATPPlayers(ATPInit):
 
 if __name__ == '__main__':
     atp = ATPPlayers(None)
-    asyncio.run(
-        atp.get_pl_info_by_atp_pl_id('c172'))
+    asyncio.run(atp.get_pl_info_by_atp_pl_id('c172'))
     # atp.check_rating_date_in_db('2024-01-01')
+    # response = requests.get('https://www.atptour.com/en/-/www/activity/sgl/mm58/', params=params, cookies=cookies, headers=headers)

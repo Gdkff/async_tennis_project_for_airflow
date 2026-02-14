@@ -89,11 +89,12 @@ class DBOperator:
         columns_insert_str = ', '.join(columns_insert)
         columns_update = [c for c in columns_insert if c not in conflict_fields + ['record_created_at', 'id']]
         columns_update_str = ', '.join(f"{col} = EXCLUDED.{col}" for col in columns_update)
-        do_on_conflict = f'DO UPDATE SET {columns_update_str}' if on_conflict_update else 'DO NOTHING'
+        do_on_conflict = f'({', '.join(conflict_fields)}) DO UPDATE SET {columns_update_str}' \
+            if on_conflict_update else 'DO NOTHING'
 
         placeholders = []
         table_column_names_and_types = await self.__get_table_column_names_and_types(schema, table)
-        for idx, col in enumerate(columns_insert, start=1):
+        for idx, col in enumerate(columns_insert, 1):
             col = col.replace('"', '')
             placeholders.append(f"${idx}::{table_column_names_and_types[col]}[]")
 
@@ -101,9 +102,8 @@ class DBOperator:
         INSERT INTO {schema}.{table} ({columns_insert_str})
         SELECT *
         FROM UNNEST ({', '.join(placeholders)}) AS t({columns_insert_str})
-        ON CONFLICT ({', '.join(conflict_fields)}) {do_on_conflict};
+        ON CONFLICT {do_on_conflict};
         """
-        # print(query_template)
         for i in range(0, len(records), CHUNK_SIZE):
             chunk = records[i:i + CHUNK_SIZE]
             values = [[r.get(col) for col in columns_insert] for r in chunk]
