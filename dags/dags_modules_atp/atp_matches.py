@@ -10,6 +10,7 @@ class ATPMatches(ATPInit):
         super().__init__()
         self.__dbo = dbo_in
         self.__all_tournament_ids = set()
+        self.__bye_players = {'v442'}
 
     async def __get_draw_soup_and_draw_types_list(self, atp_trn_id: str, trn_year: int, draw_type: str,
                                                   get_draw_types_list: bool = False) -> (BeautifulSoup | None,
@@ -43,8 +44,7 @@ class ATPMatches(ATPInit):
         draws_data = zip(draw_headers, draw_contents)
         return draws_data, draw_types_list
 
-    @staticmethod
-    def __parse_match_soup(match_soup: BeautifulSoup | PageElement) -> dict | None:
+    def __parse_match_soup(self, match_soup: BeautifulSoup | PageElement) -> dict | None:
         match_stats_teg = match_soup.find('a', string='Stats')
         atp_match_id = match_stats_teg.get('href').split('/')[-1] if match_stats_teg else None
         match_data = {
@@ -104,12 +104,12 @@ class ATPMatches(ATPInit):
                         seed = int(pl_info)
                     else:
                         if ' ' in pl_info:
-                            seed = pl_info.split(' ')[0]
+                            seed = int(pl_info.split(' ')[0])
                             info = pl_info.split(' ')[1]
                         else:
                             info = pl_info
                 match_data.update({
-                    f't{team_num}_pl{plr_num}_id': atp_pl_id,
+                    f't{team_num}_pl{plr_num}_id': atp_pl_id if atp_pl_id not in self.__bye_players else None,
                     f't{team_num}_pl{plr_num}_seed': seed,
                     f't{team_num}_pl{plr_num}_info': info})
             set_scores = team.find_all('div', class_='score-item')
@@ -245,6 +245,8 @@ class ATPMatches(ATPInit):
                 matches_with_pl_frozenset_as_key[pl_lines_from_results_matches] = {'results': m}
             else:
                 matches_with_pl_frozenset_as_key[pl_lines_from_results_matches]['results'] = m
+        if 'Round Robin' in str(matches_from_results):
+            return matches_from_results, players_set
         for key, match_from_draws_and_results in matches_with_pl_frozenset_as_key.items():
             if len(match_from_draws_and_results) < 2:
                 for match_data in match_from_draws_and_results.values():
@@ -261,5 +263,15 @@ class ATPMatches(ATPInit):
         trn_data, matches_from_draws = await self.__load_draw_matches(trn_data)
         trn_data, matches_from_results = await self.__load_results_matches(trn_data)
         matches, players = self.__operate_draws_and_results_matches(matches_from_draws, matches_from_results)
+        anti_duplicate_set = set()
+        for i, m in enumerate(matches):
+            if (
+                    m['atp_trn_id'], m['trn_year'], m['trn_start_date'], m['draw_name'],
+                    m['round_number'], m['match_number']
+            ) in anti_duplicate_set:
+                trn_data['duplicates_in_matches'] = True
+                trn_data['matches_loaded'] = False
+                return trn_data, [], players
+            anti_duplicate_set.add((m['atp_trn_id'], m['trn_year'], m['trn_start_date'],
+                                    m['draw_name'], m['round_number'], m['match_number']))
         return trn_data, matches, players
-    

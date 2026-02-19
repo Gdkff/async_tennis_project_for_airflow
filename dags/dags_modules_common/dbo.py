@@ -104,6 +104,9 @@ class DBOperator:
         FROM UNNEST ({', '.join(placeholders)}) AS t({columns_insert_str})
         ON CONFLICT {do_on_conflict};
         """
+        # print(query_template)
+        # for i, record in enumerate(records, 1):
+        #     print(i, record)
         for i in range(0, len(records), CHUNK_SIZE):
             chunk = records[i:i + CHUNK_SIZE]
             values = [[r.get(col) for col in columns_insert] for r in chunk]

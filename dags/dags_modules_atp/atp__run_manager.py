@@ -128,7 +128,7 @@ class ATP(atp_init.ATPInit):
             'doubles_main_draw_matches', 'doubles_qualification_draw_matches', 'draws_count', 'matches_loaded'],
                                             {'matches_loaded': None})
         batch_size = self.ATPTournaments.concurrency
-        # batch_size = 1
+        batch_size = 1
         batches = [tournaments[i:i + batch_size] for i in range(0, len(tournaments), batch_size)]
         batches_count = len(batches)
         print(f'Всего {batches_count} батчей')
@@ -150,8 +150,7 @@ class ATP(atp_init.ATPInit):
             await self.DBO.close_pg_connections()
             await self.DBO.insert_or_update_many('public', 'atp_matches', matches_out,
                                                  ['atp_trn_id', 'trn_year', 'trn_start_date', 'draw_name',
-                                                  'round_number', 'match_number'
-                                                  ], on_conflict_update=False)
+                                                  'round_number', 'match_number'])
             await self.DBO.close_pg_connections()
             await self.DBO.insert_or_update_many('public', 'atp_tournaments', tournaments_out,
                                                  ['atp_trn_id', 'trn_year', 'trn_start_date'])
