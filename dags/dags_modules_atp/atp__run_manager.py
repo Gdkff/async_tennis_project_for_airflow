@@ -128,7 +128,7 @@ class ATP(atp_init.ATPInit):
             'doubles_main_draw_matches', 'doubles_qualification_draw_matches', 'draws_count', 'matches_loaded'],
                                             {'matches_loaded': None})
         batch_size = self.ATPTournaments.concurrency
-        batch_size = 1
+        # batch_size = 1
         batches = [tournaments[i:i + batch_size] for i in range(0, len(tournaments), batch_size)]
         batches_count = len(batches)
         print(f'Всего {batches_count} батчей')
