@@ -10,27 +10,43 @@ class ATPTournaments(ATPInit):
     def __init__(self, dbo_in: DBOATP):
         super().__init__()
         self.__dbo = dbo_in
-        self.__all_tournament_ids = set()
+        self.__all_tournaments_keys = {}
+        self.__last_tournament_id = 0
 
-    # async def init_async(self):
-    #     await self.__get_db_all_tournament_ids()
-    #
-    # async def __get_db_all_tournament_ids(self):
-    #     trn_ids = await self.__dbo.select('public', 'atp_tournaments', ['atp_trn_id'])
-    #     trn_ids = [p['atp_pl_id'] for p in trn_ids]
-    #     self.__all_tournament_ids.update(trn_ids)
+    async def init_async(self):
+        await self.__get_db_tournaments_cache()
+
+    async def __get_db_tournaments_cache(self):
+        tournaments = await self.__dbo.select('public', 'atp_tournaments', ['id', 'atp_trn_id',
+                                                                            'trn_year', 'trn_start_date'])
+
+        self.__all_tournaments_keys = {(trn['atp_trn_id'], trn['trn_year'], trn['trn_start_date']): trn['id']
+                                       for trn in tournaments}
+        self.__last_tournament_id = max((trn['id'] for trn in tournaments))
+        print('Турниры загружены в кэш')
+
+    def __get_tournament_id_by_key(self, atp_trn_id: str, trn_year: int, trn_start_date: date) -> int:
+        trn_id = self.__all_tournaments_keys.get((atp_trn_id, trn_year, trn_start_date))
+        if trn_id is not None:
+            return trn_id
+        else:
+            self.__last_tournament_id += 1
+            return self.__last_tournament_id
 
     async def get_one_year_result_archive(self, year_in: int):
         months_dict = {'January': 1, 'February': 2, 'March': 3, 'April': 4, 'May': 5, 'June': 6, 'July': 7, 'August': 8,
                        'September': 9, 'October': 10, 'November': 11, 'December': 12}
         tour_type_dict = {'atpgs': 'A', 'ch': 'C'}
         atp_tournaments_from_calendar_out = []
-        for tour_type in (tour_type_dict.keys()):
+        for tour_type in tour_type_dict.keys():
             url = 'https://www.atptour.com/en/scores/results-archive?year=' + \
                   str(year_in) + '&tournamentType=' + tour_type
             soup = await self._get_html_async_curl_cffi(url)
             trns_list = soup.find('div', class_='tournament-list')
-            trns_bs4 = trns_list.find_all('ul', class_='events')
+            try:
+                trns_bs4 = trns_list.find_all('ul', class_='events')
+            except:
+                print(trns_list)
             for trn_bs4 in trns_bs4:
                 tournament_profile = trn_bs4.find('a', class_='tournament__profile')
                 trn_atp_link = tournament_profile.get('href').split('/')[-2]
@@ -58,17 +74,20 @@ class ATPTournaments(ATPInit):
                 end_date = date(dates_dict['end_date']['year'],
                                 dates_dict['end_date']['month'],
                                 dates_dict['end_date']['day'])
-                atp_tournaments_from_calendar_out.append({'atp_trn_id': trn_atp_link,
-                                                          'trn_year': year_in,
-                                                          'tour_type': tour_type_dict[tour_type],
-                                                          'trn_name': atp_trn_name,
-                                                          'trn_start_date': start_date,
-                                                          'trn_end_date': end_date,
-                                                          'trn_city': trn_city,
-                                                          'trn_country': trn_country})
+                trn_id = self.__get_tournament_id_by_key(trn_atp_link, year_in, start_date)
+                atp_tournaments_from_calendar_out.append({
+                    'id': trn_id,
+                    'atp_trn_id': trn_atp_link,
+                    'trn_year': year_in,
+                    'tour_type': tour_type_dict[tour_type],
+                    'trn_name': atp_trn_name,
+                    'trn_start_date': start_date,
+                    'trn_end_date': end_date,
+                    'trn_city': trn_city,
+                    'trn_country': trn_country,
+                    'singles_results_url': f'https://www.atptour.com/en/scores/archive/a'
+                                           f'/{trn_atp_link}/{year_in}/results'})
         return atp_tournaments_from_calendar_out
-
-
 
 
 if __name__ == '__main__':

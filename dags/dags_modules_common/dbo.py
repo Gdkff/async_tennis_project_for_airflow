@@ -81,6 +81,7 @@ class DBOperator:
             return
 
         now = datetime.datetime.now()
+            # datetime.timezone.utc)
         for row in records:
             row.setdefault('record_updated_at', now)
             row.setdefault('record_created_at', now)

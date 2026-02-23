@@ -155,9 +155,7 @@ class ATPMatches(ATPInit):
                     continue
                 for match_num, match_soup in enumerate(matches, 1):
                     match_data = {
-                        'atp_trn_id': trn_data['atp_trn_id'],
-                        'trn_year': trn_data['trn_year'],
-                        'trn_start_date': trn_data['trn_start_date'],
+                        'trn_id': trn_data['id'],
                         'draw_name': draw_name,
                         'trn_round_name': trn_round_name,
                         'round_number': trn_round_num,
@@ -203,9 +201,7 @@ class ATPMatches(ATPInit):
                     trn_round_num = 1 if qualifying_current != qualifying_last else trn_round_num
                     qualifying_last = qualifying_current
                     match_data = {
-                        'atp_trn_id': trn_data['atp_trn_id'],
-                        'trn_year': trn_data['trn_year'],
-                        'trn_start_date': trn_data['trn_start_date'],
+                        'trn_id': trn_data['id'],
                         'draw_name': 'qualifier' + trn_type if qualifying_current else trn_type,
                         'trn_round_name': match_header[0][:-3],
                         'round_number': trn_round_num,
@@ -265,13 +261,9 @@ class ATPMatches(ATPInit):
         matches, players = self.__operate_draws_and_results_matches(matches_from_draws, matches_from_results)
         anti_duplicate_set = set()
         for i, m in enumerate(matches):
-            if (
-                    m['atp_trn_id'], m['trn_year'], m['trn_start_date'], m['draw_name'],
-                    m['round_number'], m['match_number']
-            ) in anti_duplicate_set:
+            if (m['trn_id'], m['draw_name'], m['round_number'], m['match_number']) in anti_duplicate_set:
                 trn_data['duplicates_in_matches'] = True
                 trn_data['matches_loaded'] = False
                 return trn_data, [], players
-            anti_duplicate_set.add((m['atp_trn_id'], m['trn_year'], m['trn_start_date'],
-                                    m['draw_name'], m['round_number'], m['match_number']))
+            anti_duplicate_set.add((m['trn_id'], m['draw_name'], m['round_number'], m['match_number']))
         return trn_data, matches, players

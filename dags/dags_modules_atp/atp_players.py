@@ -17,7 +17,7 @@ class ATPPlayers(ATPInit):
     async def __db_all_pl_ids_loading(self):
         pl_ids = await self.__dbo.select('public', 'atp_players', ['atp_pl_id'])
         self.all_pl_ids = {p['atp_pl_id'] for p in pl_ids}
-        print('Игроки загружены в кэш')
+        print('ID игроков загружены в кэш')
 
     async def get_pl_info_by_atp_pl_id(self, atp_pl_id: str) -> dict | None:
         url = f'https://www.atptour.com/en/-/www/players/hero/{atp_pl_id}'

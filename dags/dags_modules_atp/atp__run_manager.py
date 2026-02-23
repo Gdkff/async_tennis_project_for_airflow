@@ -19,6 +19,7 @@ class ATP(atp_init.ATPInit):
     async def __async_init_classes_variables(self):
         await self.ATPRanking.init_async()
         await self.ATPPlayers.init_async()
+        await self.ATPTournaments.init_async()
 
     async def load_rankings(self):
         print('Инициализируем пул соединений и загружаем переменные')
@@ -88,11 +89,11 @@ class ATP(atp_init.ATPInit):
         print(f'Разбили на батчи. Всего {batches_count} батчей')
         for batch in batches:
             in_time = datetime.now()
-            tasks = [self.ATPPlayers.get_pl_info_by_atp_pl_id(atp_pl_id)
-                     for atp_pl_id in batch]
+            tasks = [self.ATPPlayers.get_pl_info_by_atp_pl_id(atp_pl_id) for atp_pl_id in batch]
             print('Загружаем данные игроков')
             batch_players_data = await asyncio.gather(*tasks)
             print('Данные игроков в батче загружены')
+            [print(pl) for pl in batch_players_data]
             await self.DBO.insert_or_update_many('public', 'atp_players', batch_players_data, ['atp_pl_id'])
             print('Id новых игроков в батче загружены в базу')
             batches_count -= 1
@@ -114,7 +115,7 @@ class ATP(atp_init.ATPInit):
             batch_archive_data = [d for inner in batch_archive_data for d in inner]
             print('Данные в батче архивных турниров с сайта загружены')
             await self.DBO.insert_or_update_many('public', 'atp_tournaments', batch_archive_data,
-                                                 ['atp_trn_id', 'trn_year', 'trn_start_date'])
+                                                 ['id'])
             print('Данные в батче архивных турниров загружены в БД')
             batches_count -= 1
             print(f'Батч загружен за {datetime.now() - in_time}. Осталось загрузить {batches_count}')
@@ -123,7 +124,7 @@ class ATP(atp_init.ATPInit):
         await self.__async_init_classes()
         await self.__async_init_classes_variables()
         tournaments = await self.DBO.select('public', 'atp_tournaments', [
-            'atp_trn_id', 'trn_year', 'tour_type', 'trn_name', 'trn_start_date', 'trn_end_date', 'trn_city',
+            'id', 'atp_trn_id', 'trn_year', 'tour_type', 'trn_name', 'trn_start_date', 'trn_end_date', 'trn_city',
             'trn_country', 'singles_main_draw_matches', 'singles_qualification_draw_matches',
             'doubles_main_draw_matches', 'doubles_qualification_draw_matches', 'draws_count', 'matches_loaded'],
                                             {'matches_loaded': None})
@@ -149,11 +150,12 @@ class ATP(atp_init.ATPInit):
             self.ATPPlayers.all_pl_ids.update({pl['atp_pl_id'] for pl in players_out})
             await self.DBO.close_pg_connections()
             await self.DBO.insert_or_update_many('public', 'atp_matches', matches_out,
-                                                 ['atp_trn_id', 'trn_year', 'trn_start_date', 'draw_name',
-                                                  'round_number', 'match_number'])
+                                                 ['trn_id', 'draw_name', 'round_number', 'match_number'])
+            print('Матчи батча загружены в БД')
             await self.DBO.close_pg_connections()
             await self.DBO.insert_or_update_many('public', 'atp_tournaments', tournaments_out,
-                                                 ['atp_trn_id', 'trn_year', 'trn_start_date'])
+                                                 ['id'])
+            print('Турниры батча обновлены в БД')
             batches_count -= 1
             print(f'Батч загружен за {datetime.now() - in_time}. Осталось загрузить {batches_count}')
 
@@ -163,7 +165,7 @@ def atp_load_rankings():
     asyncio.run(atp.load_rankings())
 
 
-def atp_load_new_players():
+def load_new_players():
     atp = ATP()
     asyncio.run(atp.load_new_players())
 
@@ -181,8 +183,8 @@ def get_tournaments_matches():
 if __name__ == '__main__':
     start_time = datetime.now()
     # atp_load_rankings()
-    # atp_load_new_players()
+    load_new_players()
     # get_archive_tournaments()
-    get_tournaments_matches()
+    # get_tournaments_matches()
 
     print('Time length:', datetime.now() - start_time)
